@@ -480,10 +480,14 @@
   </div>
 
   <script>
-    // Supabase 초기화
     const SUPABASE_URL = 'https://swiferlakcaeokzwlgyz.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_RI46PspBesxDg9_Yg4fNkw_gXAhV_NG';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let supabase = null;
+
+    // Supabase 초기화 (CDN 로드 대기)
+    if (window.supabase) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
 
     let trips = [];
 
