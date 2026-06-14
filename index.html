@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rabong - 낚시 후기</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+    }
+
+    :root {
+      --bg-dark: #0a0a0a;
+      --bg-card: #1a1a1a;
+      --text-light: #ffffff;
+      --text-muted: #999999;
+      --border-dark: #333333;
+      --font-size: 22px;
+    }
+
+    .app {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-dark);
+    }
+
+    .page {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+    }
+
+    .page.active {
+      display: flex;
+    }
+
+    /* 메인화면 */
+    .home-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 80px;
+      scroll-behavior: smooth;
+      position: relative;
+    }
+
+    .feed-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 20px;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .trip-card {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .trip-card:active {
+      transform: scale(0.98);
+    }
+
+    .trip-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .trip-card-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 30%;
+      background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.8));
+      display: flex;
+      align-items: flex-end;
+      padding: 16px;
+      color: white;
+      font-size: var(--font-size);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    /* 글쓰기 버튼 */
+    .fab {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #0a0a0a;
+      border: none;
+      font-size: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease;
+      z-index: 100;
+    }
+
+    .fab:active {
+      transform: scale(0.9);
+    }
+
+    /* 상세화면 */
+    .trip-detail {
+      flex-direction: column;
+    }
+
+    .detail-header {
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-dark);
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 32px;
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .detail-photo-count {
+      font-size: 18px;
+      color: var(--text-light);
+      font-weight: 600;
+      padding: 8px 12px;
+    }
+
+    .detail-edit-btn {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 8px 12px;
+      font-weight: 600;
+    }
+
+    .detail-edit-btn:active {
+      opacity: 0.7;
+    }
+
+    .detail-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .swipe-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-card);
+      user-select: none;
+      border-radius: 12px;
+      margin: 12px;
+    }
+
+    .swipe-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+
+    .detail-content {
+      flex-shrink: 0;
+      padding: 24px;
+      overflow: hidden;
+      background: var(--bg-dark);
+      border-top: 1px solid var(--border-dark);
+      font-size: var(--font-size);
+      line-height: 1.6;
+      word-break: break-word;
+      height: 110px;
+      white-space: pre-wrap;
+    }
+
+    /* 글쓰기 화면 */
+    .write-trip {
+      flex-direction: column;
+    }
+
+    .write-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid var(--border-dark);
+      gap: 12px;
+    }
+
+    .write-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .write-back-btn {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 28px;
+      cursor: pointer;
+      padding: 8px;
+    }
+
+    .write-temp-save-btn {
+      background: var(--bg-card);
+      color: var(--text-light);
+      border: 1px solid var(--border-dark);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .write-temp-save-btn:active {
+      background: var(--border-dark);
+    }
+
+    .write-save-btn {
+      background: var(--text-light);
+      color: var(--bg-dark);
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 18px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .write-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .form-section {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: var(--font-size);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      background: var(--bg-card);
+      color: var(--text-light);
+      font-size: var(--font-size);
+      font-family: inherit;
+      resize: vertical;
+      min-height: 44px;
+    }
+
+    .form-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--text-light);
+    }
+
+    .photo-input {
+      display: none;
+    }
+
+    .photo-upload-btn {
+      width: 100%;
+      padding: 20px;
+      border: 2px solid var(--border-dark);
+      border-radius: 8px;
+      background: var(--bg-card);
+      color: var(--text-light);
+      font-size: var(--font-size);
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .photo-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .photo-preview-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-card);
+    }
+
+    .photo-preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .photo-remove-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 28px;
+      height: 28px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .photo-form-group {
+      margin-bottom: 24px;
+      padding: 16px;
+      border: 1px solid var(--border-dark);
+      border-radius: 8px;
+      background: var(--bg-card);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .photo-form-group-header {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .photo-form-group-image {
+      width: 100%;
+      height: 400px;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .photo-form-group-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .photo-form-group-info {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .fab {
+        width: 60px;
+        height: 60px;
+        font-size: 36px;
+        bottom: 20px;
+        right: 20px;
+      }
+
+      .form-input,
+      .login-input {
+        font-size: 18px;
+      }
+
+      .detail-content {
+        max-height: 50%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- 메인화면 -->
+    <div id="homePage" class="page home-feed active">
+      <div class="feed-container" id="feedContainer"></div>
+      <button class="fab" onclick="goToWrite()">+</button>
+      <button style="position: fixed; bottom: 100px; right: 20px; padding: 12px 16px; background: #ff4444; border: none; color: white; border-radius: 8px; cursor: pointer; font-size: 12px; z-index: 100;" onclick="clearAllData()">데이터 초기화</button>
+    </div>
+
+    <!-- 상세화면 -->
+    <div id="detailPage" class="page trip-detail">
+      <div class="detail-header">
+        <button class="back-btn" onclick="goToHome()">←</button>
+        <div class="detail-photo-count" id="photoCount">1/3</div>
+        <button class="detail-edit-btn" onclick="goToEditTrip()">수정</button>
+      </div>
+      <div class="detail-body">
+        <div class="swipe-container" id="swipeContainer" ontouchstart="handleSwipeStart(event)" ontouchend="handleSwipeEnd(event)">
+          <img id="detailImage" class="swipe-image" src="" alt="사진">
+        </div>
+        <div class="detail-content" id="detailContent"></div>
+      </div>
+    </div>
+
+    <!-- 글쓰기 화면 -->
+    <div id="writePage" class="page write-trip">
+      <div class="write-header">
+        <div class="write-header-left">
+          <button class="write-back-btn" onclick="goToHome()">←</button>
+          <button class="write-temp-save-btn" onclick="handleTempSave()">임시저장</button>
+        </div>
+        <button class="write-save-btn" onclick="handleSaveTrip()">저장</button>
+      </div>
+      <div class="write-content">
+        <div class="form-section">
+          <button class="photo-upload-btn" onclick="document.getElementById('photoInput').click()">
+            ＋ 사진 추가하기
+          </button>
+          <input id="photoInput" type="file" multiple accept="image/*" class="photo-input" onchange="handlePhotoSelect(event)">
+          <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+        </div>
+
+        <div class="form-section">
+          <label class="form-label">제목</label>
+          <textarea id="captionInput" class="form-input" placeholder="예: 2026.06.17 후포항 - 첫 출조" rows="2"></textarea>
+        </div>
+
+        <div class="form-section">
+          <label class="form-label">내용</label>
+          <textarea id="contentInput" class="form-input" placeholder="오늘의 낚시 후기를 적어주세요..." rows="6"></textarea>
+        </div>
+
+        <div id="photoFormsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 샘플 데이터 (임시 비움 - localStorage 테스트용)
+    let trips = [];
+
+    let selectedPhotos = [];
+    let photoContents = {};
+    let currentTripIndex = 0;
+    let currentPhotoIndex = 0;
+    let swipeStartX = null;
+    let editingTripId = null;
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+    }
+
+
+
+    function loadTripsFromStorage() {
+      const stored = localStorage.getItem('rabongTrips');
+      if (stored) {
+        try {
+          trips = JSON.parse(stored);
+          // 이전 형식 데이터 마이그레이션 (createdAt 문자열 → Date 객체)
+          trips = trips.map(trip => ({
+            ...trip,
+            createdAt: typeof trip.createdAt === 'string' ? new Date(trip.createdAt) : trip.createdAt,
+            photos: trip.photos || [] // photos 필드 없으면 빈 배열로
+          }));
+        } catch (e) {
+          console.log('저장된 데이터를 불러올 수 없습니다.', e);
+        }
+      }
+    }
+
+    function renderFeed() {
+      console.log('renderFeed 실행 - trips 데이터:', trips);
+      console.log('localStorage rabongTrips:', localStorage.getItem('rabongTrips'));
+
+      const sorted = [...trips].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const html = sorted.map(trip => {
+        if (trip.photos && trip.photos.length > 0) {
+          return `
+            <div class="trip-card" onclick="viewTrip('${trip.id}')">
+              <img src="${trip.photos[0].url}" alt="${trip.caption}" onerror="this.style.display='none'">
+              <div class="trip-card-overlay">${trip.caption}</div>
+            </div>
+          `;
+        } else {
+          // 사진이 없으면 텍스트 카드로 표시
+          const displayText = trip.caption || trip.content || '제목 없음';
+          const subText = (trip.caption && trip.content) ? trip.content : '';
+          return `
+            <div class="trip-card" onclick="viewTrip('${trip.id}')" style="background: var(--bg-card); display: flex; align-items: center; justify-content: center; padding: 20px;">
+              <div style="text-align: center; width: 100%;">
+                <div style="font-size: 18px; font-weight: 600; color: var(--text-light); margin-bottom: 12px;">${displayText}</div>
+                ${subText ? `<div style="font-size: 14px; color: var(--text-muted); line-height: 1.4; word-break: break-word;">${subText.substring(0, 100)}${subText.length > 100 ? '...' : ''}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+      document.getElementById('feedContainer').innerHTML = html;
+    }
+
+    function viewTrip(tripId) {
+      currentTripIndex = trips.findIndex(t => t.id === tripId);
+      currentPhotoIndex = 0;
+      showPage('detailPage');
+      showPhoto();
+    }
+
+    function showPhoto() {
+      const trip = trips[currentTripIndex];
+      const photo = trip.photos[currentPhotoIndex];
+      document.getElementById('detailImage').src = photo.url;
+      document.getElementById('detailContent').textContent = photo.content;
+      document.getElementById('photoCount').textContent = `${currentPhotoIndex + 1}/${trip.photos.length}`;
+    }
+
+    function handleSwipeStart(e) {
+      swipeStartX = e.touches[0].clientX;
+    }
+
+    function handleSwipeEnd(e) {
+      if (!swipeStartX) return;
+      const trip = trips[currentTripIndex];
+      const touchEnd = e.changedTouches[0].clientX;
+      const diff = swipeStartX - touchEnd;
+
+      if (Math.abs(diff) < 30) return;
+
+      if (diff > 0 && currentPhotoIndex < trip.photos.length - 1) {
+        currentPhotoIndex++;
+        showPhoto();
+      } else if (diff < 0 && currentPhotoIndex > 0) {
+        currentPhotoIndex--;
+        showPhoto();
+      }
+      swipeStartX = null;
+    }
+
+    function goToHome() {
+      showPage('homePage');
+    }
+
+    function goToWrite() {
+      selectedPhotos = [];
+      photoContents = {};
+      editingTripId = null;
+      document.getElementById('photoInput').value = '';
+      document.getElementById('captionInput').value = '';
+      document.getElementById('photoPreviewGrid').innerHTML = '';
+      document.getElementById('photoFormsContainer').innerHTML = '';
+      showPage('writePage');
+      loadTempData();
+    }
+
+    function clearAllData() {
+      if (confirm('모든 저장된 후기를 삭제하시겠습니까?\n(localStorage 초기화)')) {
+        localStorage.removeItem('rabongTrips');
+        trips = [];
+        renderFeed();
+        alert('모든 데이터가 삭제되었습니다!');
+      }
+    }
+
+    function goToEditTrip() {
+      const trip = trips[currentTripIndex];
+      editingTripId = trip.id;
+
+      selectedPhotos = trip.photos.map(photo => ({
+        preview: photo.url,
+        file: null
+      }));
+
+      document.getElementById('captionInput').value = trip.caption;
+
+      trip.photos.forEach((photo, index) => {
+        photoContents[index] = photo.content;
+      });
+
+      document.getElementById('photoInput').value = '';
+      document.getElementById('photoPreviewGrid').innerHTML = '';
+      document.getElementById('photoFormsContainer').innerHTML = '';
+
+      renderPhotoPreview();
+      renderPhotoForms();
+
+      showPage('writePage');
+    }
+
+    function handlePhotoSelect(event) {
+      const files = Array.from(event.target.files);
+      const newPhotos = files.map(file => ({
+        file,
+        preview: URL.createObjectURL(file)
+      }));
+      selectedPhotos = selectedPhotos.concat(newPhotos);
+      renderPhotoPreview();
+      renderPhotoForms();
+    }
+
+    function renderPhotoPreview() {
+      const html = selectedPhotos.map((photo, index) => `
+        <div class="photo-preview-item">
+          <img src="${photo.preview}" alt="선택된 사진 ${index + 1}">
+          <button class="photo-remove-btn" onclick="removePhoto(${index})">✕</button>
+        </div>
+      `).join('');
+      document.getElementById('photoPreviewGrid').innerHTML = html;
+    }
+
+    function removePhoto(index) {
+      selectedPhotos.splice(index, 1);
+      delete photoContents[index];
+      renderPhotoPreview();
+      renderPhotoForms();
+    }
+
+    function renderPhotoForms() {
+      const html = selectedPhotos.map((photo, index) => `
+        <div class="form-section">
+          <div class="photo-form-group">
+            <div class="photo-form-group-header">
+              <div class="photo-form-group-image">
+                <img src="${photo.preview}" alt="사진 ${index + 1}">
+              </div>
+              <div class="photo-form-group-info">
+                사진 ${index + 1}
+              </div>
+            </div>
+            <textarea
+              class="form-input"
+              placeholder="이 사진에 대한 후기를 적어주세요..."
+              rows="3"
+              onchange="photoContents[${index}] = this.value"
+            >${photoContents[index] || ''}</textarea>
+          </div>
+        </div>
+      `).join('');
+      document.getElementById('photoFormsContainer').innerHTML = html;
+    }
+
+    function handleTempSave() {
+      const caption = document.getElementById('captionInput').value.trim();
+      const tempData = {
+        caption,
+        photos: selectedPhotos.map((photo, index) => ({
+          preview: photo.preview,
+          content: photoContents[index] || ''
+        }))
+      };
+
+      localStorage.setItem('rabongTempData', JSON.stringify(tempData));
+      alert('임시저장되었습니다! 나중에 계속 작성할 수 있습니다.');
+    }
+
+    function loadTempData() {
+      const tempData = localStorage.getItem('rabongTempData');
+      if (tempData) {
+        const data = JSON.parse(tempData);
+        document.getElementById('captionInput').value = data.caption || '';
+
+        // 임시저장된 사진 복원
+        selectedPhotos = data.photos.map(photo => ({
+          preview: photo.preview,
+          file: null
+        }));
+
+        // 임시저장된 후기 내용 복원
+        data.photos.forEach((photo, index) => {
+          photoContents[index] = photo.content;
+        });
+
+        renderPhotoPreview();
+        renderPhotoForms();
+      }
+    }
+
+    function handleSaveTrip() {
+      const caption = document.getElementById('captionInput').value.trim();
+      const content = document.getElementById('contentInput').value.trim();
+
+      // 제목 또는 내용 중 하나라도 있으면 저장 가능
+      if (!caption && !content) {
+        alert('제목 또는 내용을 입력해주세요.');
+        return;
+      }
+
+      if (editingTripId) {
+        // 기존 항목 수정
+        const tripIndex = trips.findIndex(t => t.id === editingTripId);
+        if (tripIndex !== -1) {
+          trips[tripIndex] = {
+            ...trips[tripIndex],
+            caption,
+            content,
+            photos: selectedPhotos.length > 0 ? selectedPhotos.map((photo, index) => ({
+              url: photo.preview,
+              content: photoContents[index] || ''
+            })) : []
+          };
+        }
+        editingTripId = null;
+      } else {
+        // 새로운 항목 추가
+        const newTrip = {
+          id: Date.now().toString(),
+          caption,
+          content,
+          createdAt: new Date(),
+          photos: selectedPhotos.length > 0 ? selectedPhotos.map((photo, index) => ({
+            url: photo.preview,
+            content: photoContents[index] || ''
+          })) : []
+        };
+        trips.unshift(newTrip);
+      }
+
+      localStorage.removeItem('rabongTempData');
+      localStorage.setItem('rabongTrips', JSON.stringify(trips));
+
+      document.getElementById('captionInput').value = '';
+      document.getElementById('contentInput').value = '';
+      showPage('homePage');
+      renderFeed();
+    }
+
+    // 초기화
+    loadTripsFromStorage();
+
+    // 디버깅: localStorage가 비어있으면 샘플 데이터로 테스트
+    if (trips.length === 0) {
+      console.warn('localStorage가 비어있음. 샘플 데이터 추가됨.');
+      trips = [
+        {
+          id: '1',
+          caption: '후포항 출조기',
+          content: '오늘 후포항에서 정말 멋진 낚시를 했습니다. 날씨도 좋았고 물고기도 많이 잡았어요!',
+          photos: [],
+          createdAt: new Date()
+        }
+      ];
+    }
+
+    renderFeed();
+  </script>
+</body>
+</html>

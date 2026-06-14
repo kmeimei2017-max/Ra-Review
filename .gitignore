@@ -1,0 +1,21 @@
+# 백업 파일
+로컬-웹-완벽.html
+
+# OS 생성 파일
+.DS_Store
+Thumbs.db
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node (향후 사용할 경우 대비)
+node_modules/
+npm-debug.log
+package-lock.json
+
+# 로컬 테스트 파일
+*.local.html
