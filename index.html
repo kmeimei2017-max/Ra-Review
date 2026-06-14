@@ -482,11 +482,14 @@
   <script>
     const SUPABASE_URL = 'https://swiferlakcaeokzwlgyz.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_RI46PspBesxDg9_Yg4fNkw_gXAhV_NG';
-    let supabase = null;
 
-    // Supabase 초기화 (CDN 로드 대기)
-    if (window.supabase) {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Supabase 클라이언트 (lazy initialization)
+    let _supabaseClient = null;
+    function getSupabase() {
+      if (!_supabaseClient && window.supabase) {
+        _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+      return _supabaseClient;
     }
 
     let trips = [];
@@ -507,7 +510,7 @@
 
     async function loadTrips() {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await getSupabase()
           .from('trips')
           .select('*, photos(*)')
           .order('created_at', { ascending: false });
@@ -611,7 +614,7 @@
     async function clearAllData() {
       if (confirm('모든 저장된 후기를 삭제하시겠습니까?')) {
         try {
-          const { error } = await supabase.from('trips').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          const { error } = await getSupabase().from('trips').delete().neq('id', '00000000-0000-0000-0000-000000000000');
           if (error) throw error;
 
           localStorage.removeItem('rabongTrips');
@@ -754,7 +757,7 @@
 
         if (editingTripId) {
           // 기존 항목 수정
-          const { error: updateError } = await supabase
+          const { error: updateError } = await getSupabase()
             .from('trips')
             .update({ caption, content })
             .eq('id', editingTripId);
@@ -766,17 +769,17 @@
             const photo = selectedPhotos[i];
             if (photo.file) {
               const fileName = `${Date.now()}_${photo.file.name}`;
-              const { data: uploadData, error: uploadError } = await supabase.storage
+              const { data: uploadData, error: uploadError } = await getSupabase().storage
                 .from('trip-photos')
                 .upload(`${editingTripId}/${fileName}`, photo.file);
 
               if (uploadError) throw uploadError;
 
-              const { data: { publicUrl } } = supabase.storage
+              const { data: { publicUrl } } = getSupabase().storage
                 .from('trip-photos')
                 .getPublicUrl(`${editingTripId}/${fileName}`);
 
-              const { error: insertError } = await supabase
+              const { error: insertError } = await getSupabase()
                 .from('photos')
                 .insert({
                   trip_id: editingTripId,
@@ -788,7 +791,7 @@
               if (insertError) throw insertError;
             } else if (photo.id) {
               // 기존 사진 순서 업데이트
-              await supabase
+              await getSupabase()
                 .from('photos')
                 .update({ content: photoContents[i] || '', order_index: i })
                 .eq('id', photo.id);
@@ -797,7 +800,7 @@
           editingTripId = null;
         } else {
           // 새로운 항목 추가
-          const { data: tripData, error: tripError } = await supabase
+          const { data: tripData, error: tripError } = await getSupabase()
             .from('trips')
             .insert({ caption, content })
             .select();
@@ -811,17 +814,17 @@
             const photo = selectedPhotos[i];
             if (photo.file) {
               const fileName = `${Date.now()}_${i}_${photo.file.name}`;
-              const { error: uploadError } = await supabase.storage
+              const { error: uploadError } = await getSupabase().storage
                 .from('trip-photos')
                 .upload(`${tripId}/${fileName}`, photo.file);
 
               if (uploadError) throw uploadError;
 
-              const { data: { publicUrl } } = supabase.storage
+              const { data: { publicUrl } } = getSupabase().storage
                 .from('trip-photos')
                 .getPublicUrl(`${tripId}/${fileName}`);
 
-              const { error: insertError } = await supabase
+              const { error: insertError } = await getSupabase()
                 .from('photos')
                 .insert({
                   trip_id: tripId,
