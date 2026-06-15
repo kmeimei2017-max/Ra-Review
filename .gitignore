@@ -1,5 +1,11 @@
 # 백업 파일
 로컬-웹-완벽.html
+*백업*.html
+*차-*.html
+제목-*.html
+
+# 임시 이미지/스크린샷
+image.png
 
 # OS 생성 파일
 .DS_Store
