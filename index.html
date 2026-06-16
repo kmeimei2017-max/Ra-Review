@@ -266,6 +266,11 @@
       display: none;
     }
 
+    /* 친구 보기 모드: 홈 화면 깜빡임 방지 (링크 진입 시 홈 숨김) */
+    .view-mode #homePage {
+      display: none !important;
+    }
+
     /* 글쓰기 화면 */
     .write-trip {
       flex-direction: column;
@@ -949,16 +954,23 @@
 
     // 초기화
     (async () => {
+      // 공유 링크 여부를 데이터 로딩 전에 먼저 판단 → 홈 화면 깜빡임 방지
+      const viewId = new URLSearchParams(location.search).get('view');
+      if (viewId) {
+        document.body.classList.add('view-mode'); // 홈 즉시 숨김
+      }
+
       await loadTrips();
       renderFeed();
 
       // 공유 링크로 들어온 경우: 해당 후기만 읽기 전용으로 표시
-      const viewId = new URLSearchParams(location.search).get('view');
       if (viewId) {
         const idx = trips.findIndex(t => t.id === viewId);
         if (idx !== -1) {
-          document.body.classList.add('view-mode');
           viewTrip(viewId);
+        } else {
+          // 후기를 못 찾으면 홈으로 복귀
+          document.body.classList.remove('view-mode');
         }
       }
     })();
