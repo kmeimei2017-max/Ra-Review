@@ -587,7 +587,7 @@
         if (trip.photos && trip.photos.length > 0) {
           return `
             <div class="trip-card" onclick="viewTrip('${trip.id}')">
-              <img src="${trip.photos[0].url}" alt="${trip.caption}" onerror="this.style.display='none'">
+              <img src="${trip.photos[0].url}" alt="${trip.caption}" loading="lazy" decoding="async" onerror="this.style.display='none'">
               <div class="trip-card-overlay">${trip.caption}</div>
             </div>
           `;
@@ -621,7 +621,7 @@
       const total = trip.photos.length;
       body.innerHTML = trip.photos.map((photo, i) => `
         <div class="photo-slide">
-          <img class="slide-image" src="${photo.url}" alt="사진">
+          <img class="slide-image" src="${photo.url}" alt="사진" loading="lazy" decoding="async">
           <div class="slide-number">${i + 1} / ${total}</div>
           ${photo.content ? `<div class="slide-content">${photo.content}</div>` : ''}
         </div>
@@ -747,7 +747,7 @@
     function renderPhotoPreview() {
       const html = selectedPhotos.map((photo, index) => `
         <div class="photo-preview-item">
-          <img src="${photo.preview}" alt="선택된 사진 ${index + 1}">
+          <img src="${photo.preview}" alt="선택된 사진 ${index + 1}" loading="lazy" decoding="async">
           <button class="photo-remove-btn" onclick="removePhoto(${index})">✕</button>
         </div>
       `).join('');
@@ -767,7 +767,7 @@
           <div class="photo-form-group">
             <div class="photo-form-group-header">
               <div class="photo-form-group-image">
-                <img src="${photo.preview}" alt="사진 ${index + 1}">
+                <img src="${photo.preview}" alt="사진 ${index + 1}" loading="lazy" decoding="async">
               </div>
               <div class="photo-form-group-info">
                 사진 ${index + 1}
