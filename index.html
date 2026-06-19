@@ -24,6 +24,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <!-- 카카오톡 공유(카카오링크) SDK -->
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js" crossorigin="anonymous"></script>
   <style>
     * {
       margin: 0;
@@ -725,6 +727,18 @@
     const SUPABASE_URL = 'https://swiferlakcaeokzwlgyz.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_RI46PspBesxDg9_Yg4fNkw_gXAhV_NG';
 
+    // ▼▼▼ 카카오 디벨로퍼스 > 내 애플리케이션 > 앱 키 > JavaScript 키 를 여기에 붙여넣기 ▼▼▼
+    const KAKAO_JS_KEY = '4a320c37818198ef4481ffc3bdb64956';
+    // 키가 들어오면 카톡 공유 카드(원터치)가 활성화됨. 키 전이면 자동으로 '링크 복사'로 폴백.
+    function isKakaoReady() {
+      return !!(window.Kakao && Kakao.isInitialized && Kakao.isInitialized());
+    }
+    (function initKakao() {
+      if (window.Kakao && KAKAO_JS_KEY && !KAKAO_JS_KEY.startsWith('여기에') && !Kakao.isInitialized()) {
+        try { Kakao.init(KAKAO_JS_KEY); } catch (e) { console.log('Kakao.init 실패', e); }
+      }
+    })();
+
     // Supabase 클라이언트 (lazy initialization)
     let _supabaseClient = null;
     function getSupabase() {
@@ -1301,16 +1315,46 @@
 
     async function shareLink() {
       const trip = trips[currentTripIndex];
-      // Cloudflare Worker 주소 → 카톡 크롤러가 후기별 동적 미리보기(OG)를 읽음
-      // &v=: 대표사진이 바뀌면 링크도 바뀌어 카톡이 새 미리보기를 다시 읽음
-      const v = shortHash(trip.thumb_url || trip.id);
-      const url = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.id + '&v=' + v;
-      const ok = await copyText(url);
+
+      // 앱 후기 상세로 바로 들어가는 링크 (카드의 버튼/본문 클릭 시 이동)
+      const appUrl = 'https://kmeimei2017-max.github.io/Ra-Review/?view=' + trip.id;
+      // 밴드/일반 링크 붙여넣기용(OG 미리보기) — 카톡 SDK 미사용 시 폴백
+      const ogUrl = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.id + '&v=' + shortHash(trip.thumb_url || trip.id);
+
+      // 카드 내용 (지금 데이터로 자동 구성)
+      const title = trip.caption || '라봉 낚시 후기';
+      const description = (trip.content || '').trim().slice(0, 100) || '후기를 공유합니다 🎣';
+      const imageUrl = trip.thumb_url
+        || (trip.photos && trip.photos[0] && trip.photos[0].url)
+        || 'https://kmeimei2017-max.github.io/Ra-Review/og-image.png';
+
+      // ① 카카오 SDK 준비됨 → 카톡 공유 카드(원터치, 큰 카드 + 버튼)
+      if (isKakaoReady()) {
+        try {
+          Kakao.Share.sendDefault({
+            objectType: 'feed',
+            content: {
+              title,
+              description,
+              imageUrl,
+              link: { mobileWebUrl: appUrl, webUrl: appUrl },
+            },
+            buttons: [
+              { title: '후기 보러가기', link: { mobileWebUrl: appUrl, webUrl: appUrl } },
+            ],
+          });
+          return;
+        } catch (e) {
+          console.log('카카오 공유 실패 → 링크 복사로 대체', e);
+        }
+      }
+
+      // ② 폴백: 링크 복사 (키 발급 전/밴드/PC 등). OG로 미리보기 카드가 뜸
+      const ok = await copyText(ogUrl);
       if (ok) {
-        alert('친구에게 보낼 링크가 복사되었습니다!\n카톡에 붙여넣기 하세요.');
+        alert('친구에게 보낼 링크가 복사되었습니다!\n카톡/밴드에 붙여넣기 하세요.');
       } else {
-        // 복사 실패 시 링크를 직접 보여줌 (길게 눌러 복사)
-        prompt('아래 링크를 길게 눌러 복사하세요:', url);
+        prompt('아래 링크를 길게 눌러 복사하세요:', ogUrl);
       }
     }
 
