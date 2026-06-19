@@ -1261,15 +1261,50 @@
       });
     }
 
-    function shareLink() {
+    // 문자열 길이 기반 짧은 해시 (대표사진이 바뀌면 값이 달라짐 → 카톡 캐시 갱신용)
+    function shortHash(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; }
+      return Math.abs(h).toString(36);
+    }
+
+    // 클립보드 복사 (https 아닌 환경에서도 동작하는 폴백 포함)
+    async function copyText(text) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch (_e) { /* 폴백으로 진행 */ }
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    async function shareLink() {
       const trip = trips[currentTripIndex];
       // Cloudflare Worker 주소 → 카톡 크롤러가 후기별 동적 미리보기(OG)를 읽음
-      const url = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.id;
-      navigator.clipboard.writeText(url).then(() => {
+      // &v=: 대표사진이 바뀌면 링크도 바뀌어 카톡이 새 미리보기를 다시 읽음
+      const v = shortHash(trip.thumb_url || trip.id);
+      const url = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.id + '&v=' + v;
+      const ok = await copyText(url);
+      if (ok) {
         alert('친구에게 보낼 링크가 복사되었습니다!\n카톡에 붙여넣기 하세요.');
-      }).catch(() => {
-        alert('복사 실패');
-      });
+      } else {
+        // 복사 실패 시 링크를 직접 보여줌 (길게 눌러 복사)
+        prompt('아래 링크를 길게 눌러 복사하세요:', url);
+      }
     }
 
     // 초기화
