@@ -434,6 +434,66 @@
       display: none;
     }
 
+    /* 제목 + 카톡 대표사진 한 줄 배치 */
+    .title-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .title-row .form-input {
+      flex: 1;
+    }
+
+    .thumbnail-box {
+      position: relative;
+      flex-shrink: 0;
+      width: 96px;
+      min-height: 96px;
+      border: 2px dashed var(--border-dark);
+      border-radius: 8px;
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .thumbnail-box.has-image {
+      border-style: solid;
+    }
+
+    .thumb-placeholder {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .thumbnail-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .thumb-remove-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 22px;
+      height: 22px;
+      background: rgba(0, 0, 0, 0.6);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .photo-upload-btn {
       width: 100%;
       padding: 20px;
@@ -460,7 +520,16 @@
       overflow: hidden;
       background: var(--bg-card);
       cursor: grab;
-      touch-action: manipulation;
+      touch-action: none;              /* 썸네일 터치는 드래그로 (스크롤 가로채기 방지) */
+      -webkit-touch-callout: none;     /* iOS 길게누르기 메뉴 차단 */
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .photo-preview-item img {
+      -webkit-touch-callout: none;
+      -webkit-user-drag: none;
+      pointer-events: none;            /* 이미지 자체의 길게누르기/드래그 방지 */
     }
 
     .photo-num-badge {
@@ -616,8 +685,12 @@
         </div>
 
         <div class="form-section">
-          <label class="form-label">제목</label>
-          <textarea id="captionInput" class="form-input" placeholder="예: 2026.06.17 후포항 - 첫 출조" rows="2"></textarea>
+          <label class="form-label">제목 · 카톡 대표사진</label>
+          <div class="title-row">
+            <div class="thumbnail-box" id="thumbnailBox" onclick="document.getElementById('thumbnailInput').click()"></div>
+            <input id="thumbnailInput" type="file" accept="image/*" class="photo-input" onchange="handleThumbnailSelect(event)">
+            <textarea id="captionInput" class="form-input" placeholder="예: 2026.06.17 후포항 - 첫 출조" rows="3"></textarea>
+          </div>
         </div>
 
         <div class="form-section">
@@ -657,6 +730,7 @@
     let trips = [];
 
     let selectedPhotos = [];
+    let thumbnailPhoto = null; // 카톡 대표(썸네일) 사진: { file?, preview, url? }
     let currentTripIndex = 0;
     let currentPhotoIndex = 0;
     let editingTripId = null;
@@ -745,11 +819,13 @@
 
     function goToWrite() {
       selectedPhotos = [];
+      thumbnailPhoto = null;
       editingTripId = null;
       document.getElementById('photoInput').value = '';
       document.getElementById('captionInput').value = '';
       document.getElementById('photoPreviewGrid').innerHTML = '';
       document.getElementById('photoFormsContainer').innerHTML = '';
+      renderThumbnail();
       showPage('writePage');
       loadTempData();
       initPhotoSortable();
@@ -783,6 +859,11 @@
         content: photo.content || ''
       }));
 
+      // 대표(썸네일) 사진 복원
+      thumbnailPhoto = trip.thumb_url
+        ? { preview: trip.thumb_url, url: trip.thumb_url, file: null }
+        : null;
+
       document.getElementById('captionInput').value = trip.caption;
       document.getElementById('contentInput').value = trip.content;
 
@@ -792,6 +873,7 @@
 
       renderPhotoPreview();
       renderPhotoForms();
+      renderThumbnail();
 
       showPage('writePage');
       initPhotoSortable();
@@ -890,6 +972,52 @@
       renderPhotoForms();
     }
 
+    // ===== 카톡 대표(썸네일) 사진 =====
+    function handleThumbnailSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      thumbnailPhoto = { file, preview: URL.createObjectURL(file) };
+      event.target.value = '';
+      renderThumbnail();
+    }
+
+    function removeThumbnail(e) {
+      if (e) e.stopPropagation();
+      thumbnailPhoto = null;
+      renderThumbnail();
+    }
+
+    function renderThumbnail() {
+      const box = document.getElementById('thumbnailBox');
+      if (!box) return;
+      if (thumbnailPhoto) {
+        box.classList.add('has-image');
+        box.innerHTML = `
+          <img src="${thumbnailPhoto.preview}" alt="대표 사진">
+          <button type="button" class="thumb-remove-btn" onclick="removeThumbnail(event)">✕</button>
+        `;
+      } else {
+        box.classList.remove('has-image');
+        box.innerHTML = `<div class="thumb-placeholder">📷<br>대표사진<br>추가</div>`;
+      }
+    }
+
+    // 대표 사진을 Storage에 업로드하고 URL 반환 (기존 그대로면 그 URL, 없으면 null)
+    async function uploadThumbnail(tripId) {
+      if (!thumbnailPhoto) return null;
+      if (thumbnailPhoto.url && !thumbnailPhoto.file) return thumbnailPhoto.url;
+      const compressed = await compressImage(thumbnailPhoto.file);
+      const fileName = `thumb_${Date.now()}_${compressed.name}`;
+      const { error } = await getSupabase().storage
+        .from('trip-photos')
+        .upload(`${tripId}/${fileName}`, compressed);
+      if (error) throw error;
+      const { data: { publicUrl } } = getSupabase().storage
+        .from('trip-photos')
+        .getPublicUrl(`${tripId}/${fileName}`);
+      return publicUrl;
+    }
+
     function renderPhotoPreview() {
       const html = selectedPhotos.map((photo, index) => `
         <div class="photo-preview-item">
@@ -912,10 +1040,12 @@
     function initPhotoSortable() {
       if (photoSortable || !window.Sortable) return;
       const grid = document.getElementById('photoPreviewGrid');
+      // 길게누르기(열기/링크복사 등) OS 메뉴 차단
+      grid.addEventListener('contextmenu', (e) => e.preventDefault());
       photoSortable = Sortable.create(grid, {
         animation: 150,
-        delay: 150,            // 살짝 눌러야 드래그 시작 (탭/스크롤과 구분)
-        delayOnTouchOnly: true, // 모바일에서만 딜레이 적용
+        forceFallback: true,   // OS 기본 동작 대신 자체 드래그 → 콜아웃 메뉴 방지
+        fallbackTolerance: 3,  // 살짝만 움직여도 드래그 시작
         filter: '.photo-remove-btn', // ✕ 버튼은 드래그 안 됨
         onEnd: (evt) => {
           if (evt.oldIndex === evt.newIndex) return;
@@ -1057,6 +1187,11 @@
                 .eq('id', photo.id);
             }
           }));
+
+          // 대표(썸네일) 사진 업로드 후 URL 저장
+          const thumbUrlE = await uploadThumbnail(tripIdForUpload);
+          await getSupabase().from('trips').update({ thumb_url: thumbUrlE }).eq('id', tripIdForUpload);
+
           editingTripId = null;
         } else {
           // 새로운 항목 추가
@@ -1095,6 +1230,10 @@
 
             if (insertError) throw insertError;
           }));
+
+          // 대표(썸네일) 사진 업로드 후 URL 저장
+          const thumbUrlN = await uploadThumbnail(tripId);
+          await getSupabase().from('trips').update({ thumb_url: thumbUrlN }).eq('id', tripId);
         }
 
         localStorage.removeItem('rabongTempData');
@@ -1124,7 +1263,8 @@
 
     function shareLink() {
       const trip = trips[currentTripIndex];
-      const url = location.origin + location.pathname + '?view=' + trip.id;
+      // Edge Function 주소 → 카톡 크롤러가 후기별 동적 미리보기(OG)를 읽음
+      const url = SUPABASE_URL + '/functions/v1/og?id=' + trip.id;
       navigator.clipboard.writeText(url).then(() => {
         alert('친구에게 보낼 링크가 복사되었습니다!\n카톡에 붙여넣기 하세요.');
       }).catch(() => {
