@@ -1263,8 +1263,8 @@
 
     function shareLink() {
       const trip = trips[currentTripIndex];
-      // Edge Function 주소 → 카톡 크롤러가 후기별 동적 미리보기(OG)를 읽음
-      const url = SUPABASE_URL + '/functions/v1/og?id=' + trip.id;
+      // Cloudflare Worker 주소 → 카톡 크롤러가 후기별 동적 미리보기(OG)를 읽음
+      const url = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.id;
       navigator.clipboard.writeText(url).then(() => {
         alert('친구에게 보낼 링크가 복사되었습니다!\n카톡에 붙여넣기 하세요.');
       }).catch(() => {

@@ -78,10 +78,13 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-  return new Response(html, {
+  // 문자열 대신 UTF-8 바이트로 응답 → content-type이 text/plain으로 강제되는 문제 방지
+  const body = new TextEncoder().encode(html);
+  return new Response(body, {
+    status: 200,
     headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=300",
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
     },
   });
 });
