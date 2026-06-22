@@ -101,6 +101,17 @@
       transform: scale(0.98);
     }
 
+    .trip-card-video {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 2;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.55);
+      padding: 3px 8px;
+      border-radius: 12px;
+    }
+
     .trip-card img {
       width: 100%;
       height: 100%;
@@ -234,6 +245,41 @@
       object-fit: cover;
       display: block;
     }
+
+    /* 손맛 영상 슬라이드: 잘리지 않게 contain + 검은 배경 */
+    .slide-video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: #000;
+    }
+    /* 기본 컨트롤 대신 가운데 ▶ 하나만 (단순함) */
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .video-play {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.4);
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 20px;
+      padding-left: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 12;
+    }
+    .video-wrap.playing .video-play { opacity: 0; }
 
     .slide-content {
       position: absolute;
@@ -522,6 +568,51 @@
       margin: 12px 0;
     }
 
+    .photo-upload-sub {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+    .photo-upload-sub b { color: var(--text-light); }
+
+    /* 미리보기 그리드의 영상 아이템: 가운데 ▶ + 우하단 길이 배지 */
+    .photo-preview-item.is-video { background: #000; }
+    .photo-preview-item .pv-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+    .photo-preview-item .pv-play {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .photo-preview-item .pv-dur {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      padding: 1px 6px;
+      background: rgba(0, 0, 0, 0.65);
+      color: #fff;
+      font-size: 11px;
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
     .photo-preview-item {
       position: relative;
       aspect-ratio: 1;
@@ -689,7 +780,8 @@
           <button class="photo-upload-btn" onclick="document.getElementById('photoInput').click()">
             ＋ 사진 추가하기
           </button>
-          <input id="photoInput" type="file" multiple accept="image/*" class="photo-input" onchange="handlePhotoSelect(event)">
+          <input id="photoInput" type="file" multiple accept="image/*,video/*" class="photo-input" onchange="handlePhotoSelect(event)">
+          <div class="photo-upload-sub">사진과 함께 <b>손맛 영상(1개·15초)</b>도 추가할 수 있어요. 순서는 드래그로 바꿔요.</div>
           <div class="photo-preview-grid" id="photoPreviewGrid"></div>
         </div>
 
@@ -750,8 +842,10 @@
 
     let trips = [];
 
-    let selectedPhotos = [];
+    let selectedPhotos = []; // 사진·영상 통합 목록. 각 항목 { file?, preview, content, type:'image'|'video', duration? }
     let thumbnailPhoto = null; // 카톡 대표(썸네일) 사진: { file?, preview, url? }
+    const VIDEO_MAX_SEC = 15;          // 영상 최대 길이(초)
+    const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 영상 최대 용량(50MB)
     let currentTripIndex = 0;
     let currentPhotoIndex = 0;
     let editingTripId = null;
@@ -789,10 +883,15 @@
 
       const sorted = [...trips].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       const html = sorted.map(trip => {
-        if (trip.photos && trip.photos.length > 0) {
+        // 카드 대표 이미지: 대표사진 우선, 없으면 첫 '사진'(영상 URL은 카드에 못 쓰므로 제외)
+        const firstPhoto = (trip.photos || []).find(p => (p.type || 'image') === 'image');
+        const coverImg = trip.thumb_url || (firstPhoto && firstPhoto.url);
+        const hasVideo = (trip.photos || []).some(p => p.type === 'video');
+        if (coverImg) {
           return `
             <div class="trip-card" onclick="viewTrip('${trip.id}')">
-              <img src="${trip.photos[0].url}" alt="${trip.caption}" loading="lazy" decoding="async" onerror="this.style.display='none'">
+              <img src="${coverImg}" alt="${trip.caption}" loading="lazy" decoding="async" onerror="this.style.display='none'">
+              ${hasVideo ? '<span class="trip-card-video">🎬</span>' : ''}
               <div class="trip-card-overlay">${trip.caption}</div>
             </div>
           `;
@@ -824,14 +923,34 @@
       const trip = trips[currentTripIndex];
       const body = document.getElementById('detailBody');
       const total = trip.photos.length;
-      body.innerHTML = trip.photos.map((photo, i) => `
+      // 사진·영상을 저장된 순서 그대로 슬라이드로 (영상이면 video, 아니면 img)
+      body.innerHTML = trip.photos.map((media, i) => {
+        const inner = media.type === 'video'
+          ? `<div class="video-wrap" onclick="rabongToggleVideo(this)">
+               <video class="slide-video" src="${media.url}#t=0.1" playsinline preload="metadata"
+                 onplay="this.parentElement.classList.add('playing')"
+                 onpause="this.parentElement.classList.remove('playing')"
+                 onended="this.parentElement.classList.remove('playing')"></video>
+               <div class="video-play">▶</div>
+             </div>`
+          : `<img class="slide-image" src="${media.url}" alt="사진" loading="lazy" decoding="async">`;
+        const label = media.type === 'video' ? `🎬 ${i + 1} / ${total}` : `${i + 1} / ${total}`;
+        return `
         <div class="photo-slide">
-          <img class="slide-image" src="${photo.url}" alt="사진" loading="lazy" decoding="async">
-          <div class="slide-number">${i + 1} / ${total}</div>
-          ${photo.content ? `<div class="slide-content">${photo.content}</div>` : ''}
+          ${inner}
+          <div class="slide-number">${label}</div>
+          ${media.content ? `<div class="slide-content">${media.content}</div>` : ''}
         </div>
-      `).join('');
+      `;
+      }).join('');
       body.scrollTop = 0;
+    }
+
+    // 영상 슬라이드 탭 → 재생/일시정지 토글 (기본 컨트롤 없이 ▶ 하나만)
+    function rabongToggleVideo(wrap) {
+      const v = wrap.querySelector('video');
+      if (!v) return;
+      if (v.paused) v.play(); else v.pause();
     }
 
     function goToHome() {
@@ -873,11 +992,12 @@
       const trip = trips[currentTripIndex];
       editingTripId = trip.id;
 
-      selectedPhotos = trip.photos.map(photo => ({
-        id: photo.id,
-        preview: photo.url,
+      selectedPhotos = trip.photos.map(media => ({
+        id: media.id,
+        preview: media.url,
         file: null,
-        content: photo.content || ''
+        content: media.content || '',
+        type: media.type || 'image'
       }));
 
       // 대표(썸네일) 사진 복원
@@ -983,14 +1103,48 @@
 
     function handlePhotoSelect(event) {
       const files = Array.from(event.target.files);
-      const newPhotos = files.map(file => ({
-        file,
-        preview: URL.createObjectURL(file),
-        content: ''
-      }));
-      selectedPhotos = selectedPhotos.concat(newPhotos);
-      renderPhotoPreview();
-      renderPhotoForms();
+      event.target.value = ''; // 같은 파일 다시 고를 수 있게 초기화
+      files.forEach(file => {
+        if (file.type.startsWith('video/')) {
+          addVideoFile(file);
+        } else if (file.type.startsWith('image/')) {
+          selectedPhotos.push({ file, preview: URL.createObjectURL(file), content: '', type: 'image' });
+          renderPhotoPreview();
+          renderPhotoForms();
+        }
+      });
+    }
+
+    // 영상 추가: 1개 제한 + 길이·용량 검사를 통과한 것만 목록에 넣는다
+    function addVideoFile(file) {
+      if (selectedPhotos.some(p => p.type === 'video')) {
+        alert('영상은 후기당 1개만 올릴 수 있어요.\n(용량 절약을 위해서예요)');
+        return;
+      }
+      if (file.size > VIDEO_MAX_BYTES) {
+        const mb = (file.size / 1024 / 1024).toFixed(0);
+        alert(`영상이 너무 커요 (${mb}MB).\n${VIDEO_MAX_BYTES / 1024 / 1024}MB 이하 영상만 올릴 수 있어요.`);
+        return;
+      }
+      const preview = URL.createObjectURL(file);
+      const probe = document.createElement('video');
+      probe.preload = 'metadata';
+      probe.onloadedmetadata = () => {
+        const dur = probe.duration;
+        if (isFinite(dur) && dur > VIDEO_MAX_SEC + 0.5) {
+          URL.revokeObjectURL(preview);
+          alert(`영상이 너무 길어요 (${Math.round(dur)}초).\n${VIDEO_MAX_SEC}초 이내의 손맛·하이라이트 영상만 올릴 수 있어요.`);
+          return;
+        }
+        selectedPhotos.push({ file, preview, content: '', type: 'video', duration: isFinite(dur) ? dur : null });
+        renderPhotoPreview();
+        renderPhotoForms();
+      };
+      probe.onerror = () => {
+        URL.revokeObjectURL(preview);
+        alert('영상을 읽을 수 없어요. 다른 영상으로 시도해 주세요.');
+      };
+      probe.src = preview;
     }
 
     // ===== 카톡 대표(썸네일) 사진 =====
@@ -1040,13 +1194,27 @@
     }
 
     function renderPhotoPreview() {
-      const html = selectedPhotos.map((photo, index) => `
-        <div class="photo-preview-item">
-          <img src="${photo.preview}" alt="선택된 사진 ${index + 1}" loading="lazy" decoding="async" draggable="false">
-          <span class="photo-num-badge">${index + 1}</span>
-          <button class="photo-remove-btn" onclick="removePhoto(${index})">✕</button>
-        </div>
-      `).join('');
+      const html = selectedPhotos.map((item, index) => {
+        if (item.type === 'video') {
+          const sec = item.duration ? `${Math.round(item.duration)}초` : '';
+          return `
+            <div class="photo-preview-item is-video">
+              <video class="pv-video" src="${item.preview}" muted playsinline preload="metadata"></video>
+              <span class="pv-play">▶</span>
+              ${sec ? `<span class="pv-dur">🎬 ${sec}</span>` : ''}
+              <span class="photo-num-badge">${index + 1}</span>
+              <button class="photo-remove-btn" onclick="removePhoto(${index})">✕</button>
+            </div>
+          `;
+        }
+        return `
+          <div class="photo-preview-item">
+            <img src="${item.preview}" alt="선택된 사진 ${index + 1}" loading="lazy" decoding="async" draggable="false">
+            <span class="photo-num-badge">${index + 1}</span>
+            <button class="photo-remove-btn" onclick="removePhoto(${index})">✕</button>
+          </div>
+        `;
+      }).join('');
       document.getElementById('photoPreviewGrid').innerHTML = html;
     }
 
@@ -1080,26 +1248,34 @@
     }
 
     function renderPhotoForms() {
-      const html = selectedPhotos.map((photo, index) => `
+      const html = selectedPhotos.map((item, index) => {
+        const isVideo = item.type === 'video';
+        const thumb = isVideo
+          ? `<video src="${item.preview}" muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>`
+          : `<img src="${item.preview}" alt="사진 ${index + 1}" loading="lazy" decoding="async">`;
+        const label = isVideo ? `🎬 영상 ${index + 1}` : `사진 ${index + 1}`;
+        const ph = isVideo ? '이 영상에 대한 설명을 적어주세요...' : '이 사진에 대한 후기를 적어주세요...';
+        return `
         <div class="form-section">
           <div class="photo-form-group">
             <div class="photo-form-group-header">
               <div class="photo-form-group-image">
-                <img src="${photo.preview}" alt="사진 ${index + 1}" loading="lazy" decoding="async">
+                ${thumb}
               </div>
               <div class="photo-form-group-info">
-                사진 ${index + 1}
+                ${label}
               </div>
             </div>
             <textarea
               class="form-input"
-              placeholder="이 사진에 대한 후기를 적어주세요..."
+              placeholder="${ph}"
               rows="3"
               onchange="selectedPhotos[${index}].content = this.value"
-            >${photo.content || ''}</textarea>
+            >${item.content || ''}</textarea>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
       document.getElementById('photoFormsContainer').innerHTML = html;
     }
 
@@ -1122,16 +1298,20 @@
 
     function handleTempSave() {
       const caption = document.getElementById('captionInput').value.trim();
+      // 영상은 임시저장에 담을 수 없어(파일 직렬화 불가) 사진 글만 보존
       const tempData = {
         caption,
-        photos: selectedPhotos.map((photo) => ({
-          preview: photo.preview,
-          content: photo.content || ''
-        }))
+        photos: selectedPhotos
+          .filter((item) => item.type !== 'video')
+          .map((photo) => ({
+            preview: photo.preview,
+            content: photo.content || '',
+            type: 'image'
+          }))
       };
 
       localStorage.setItem('rabongTempData', JSON.stringify(tempData));
-      alert('임시저장되었습니다! 나중에 계속 작성할 수 있습니다.');
+      alert('임시저장되었습니다! (영상은 임시저장에 담기지 않아 다시 추가해 주세요)');
     }
 
     function loadTempData() {
@@ -1144,7 +1324,8 @@
         selectedPhotos = data.photos.map(photo => ({
           preview: photo.preview,
           file: null,
-          content: photo.content || ''
+          content: photo.content || '',
+          type: photo.type || 'image'
         }));
 
         renderPhotoPreview();
@@ -1176,13 +1357,14 @@
 
           // 새로운 파일만 업로드 (압축 + 병렬 처리)
           const tripIdForUpload = editingTripId;
-          await Promise.all(selectedPhotos.map(async (photo, i) => {
-            if (photo.file) {
-              const compressed = await compressImage(photo.file);
-              const fileName = `${Date.now()}_${i}_${compressed.name}`;
+          await Promise.all(selectedPhotos.map(async (item, i) => {
+            if (item.file) {
+              const isVideo = item.type === 'video';
+              const uploadFile = isVideo ? item.file : await compressImage(item.file);
+              const fileName = `${Date.now()}_${i}_${uploadFile.name}`;
               const { error: uploadError } = await getSupabase().storage
                 .from('trip-photos')
-                .upload(`${tripIdForUpload}/${fileName}`, compressed);
+                .upload(`${tripIdForUpload}/${fileName}`, uploadFile, isVideo ? { contentType: item.file.type } : undefined);
 
               if (uploadError) throw uploadError;
 
@@ -1195,17 +1377,18 @@
                 .insert({
                   trip_id: tripIdForUpload,
                   url: publicUrl,
-                  content: photo.content || '',
-                  order_index: i
+                  content: item.content || '',
+                  order_index: i,
+                  type: item.type || 'image'
                 });
 
               if (insertError) throw insertError;
-            } else if (photo.id) {
-              // 기존 사진 순서 업데이트
+            } else if (item.id) {
+              // 기존 사진/영상 순서 업데이트
               await getSupabase()
                 .from('photos')
-                .update({ content: photo.content || '', order_index: i })
-                .eq('id', photo.id);
+                .update({ content: item.content || '', order_index: i })
+                .eq('id', item.id);
             }
           }));
 
@@ -1226,13 +1409,14 @@
           const tripId = tripData[0].id;
 
           // 파일 업로드 (압축 + 병렬 처리)
-          await Promise.all(selectedPhotos.map(async (photo, i) => {
-            if (!photo.file) return;
-            const compressed = await compressImage(photo.file);
-            const fileName = `${Date.now()}_${i}_${compressed.name}`;
+          await Promise.all(selectedPhotos.map(async (item, i) => {
+            if (!item.file) return;
+            const isVideo = item.type === 'video';
+            const uploadFile = isVideo ? item.file : await compressImage(item.file);
+            const fileName = `${Date.now()}_${i}_${uploadFile.name}`;
             const { error: uploadError } = await getSupabase().storage
               .from('trip-photos')
-              .upload(`${tripId}/${fileName}`, compressed);
+              .upload(`${tripId}/${fileName}`, uploadFile, isVideo ? { contentType: item.file.type } : undefined);
 
             if (uploadError) throw uploadError;
 
@@ -1245,8 +1429,9 @@
               .insert({
                 trip_id: tripId,
                 url: publicUrl,
-                content: photo.content || '',
-                order_index: i
+                content: item.content || '',
+                order_index: i,
+                type: item.type || 'image'
               });
 
             if (insertError) throw insertError;
