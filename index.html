@@ -1011,19 +1011,18 @@
       micRecog.interimResults = true;
 
       const micBase = ta.value ? ta.value.replace(/\s*$/, '') + ' ' : '';
-      let finalText = '';
 
       const sync = () => {
         // 프로그램적 변경은 onchange가 자동 발생하지 않으므로 직접 알림(사진별 글 모델 갱신용)
         ta.dispatchEvent(new Event('change', { bubbles: true }));
       };
       micRecog.onresult = (e) => {
-        let interim = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) finalText += t; else interim += t;
+        // e.results는 누적 배열 → 매 이벤트마다 처음부터 전체 재조립(중복 누적 방지, 모바일 크롬 호환)
+        let full = '';
+        for (let i = 0; i < e.results.length; i++) {
+          full += e.results[i][0].transcript;
         }
-        ta.value = micBase + finalText + interim;
+        ta.value = micBase + full;
         sync();
       };
       const stopUI = () => {
