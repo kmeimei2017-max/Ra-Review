@@ -281,6 +281,49 @@
     }
     .video-wrap.playing .video-play { opacity: 0; }
 
+    /* 음성 입력 마이크 (내용칸 우하단) */
+    .mic-wrap { position: relative; }
+    .mic-wrap .form-input { resize: none; padding-bottom: 56px; }
+    .mic-fab {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      z-index: 2;
+    }
+    .mic-fab.listening {
+      background: #ef4444;
+      animation: micPulse 2.6s ease-out infinite;
+    }
+    /* 호수에 물방울 — 잔물결이 천천히 번져 사라짐 (버튼은 가만히) */
+    @keyframes micPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+      100% { box-shadow: 0 0 0 36px rgba(239, 68, 68, 0); }
+    }
+    /* 듣는 중 안내 문구 (활성 입력칸 바로 아래) */
+    .mic-hint {
+      font-size: var(--font-size);
+      color: #ef4444;
+      margin-top: 8px;
+    }
+
+    /* 제목칸은 flex 레이아웃이라 래퍼도 늘어나야 함 */
+    .title-row .mic-wrap { flex: 1; }
+    /* 음성인식 미지원 기기: 마이크 숨기고 입력칸 여백 복원 */
+    body.no-speech .mic-fab { display: none; }
+    body.no-speech .mic-wrap .form-input { padding-bottom: 14px; }
+
     .slide-content {
       position: absolute;
       bottom: 0;
@@ -786,17 +829,11 @@
         </div>
 
         <div class="form-section">
-          <label class="form-label">제목 · 카톡 대표사진</label>
-          <div class="title-row">
-            <div class="thumbnail-box" id="thumbnailBox" onclick="document.getElementById('thumbnailInput').click()"></div>
-            <input id="thumbnailInput" type="file" accept="image/*" class="photo-input" onchange="handleThumbnailSelect(event)">
-            <textarea id="captionInput" class="form-input" placeholder="예: 2026.06.17 후포항 - 첫 출조" rows="3"></textarea>
+          <label class="form-label">제목</label>
+          <div class="mic-wrap">
+            <textarea id="captionInput" class="form-input" placeholder="예: 동해호 광어 대박! (2026.06.17 후포항)" rows="3"></textarea>
+            <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력">🎤</button>
           </div>
-        </div>
-
-        <div class="form-section">
-          <label class="form-label">내용</label>
-          <textarea id="contentInput" class="form-input" placeholder="오늘의 낚시 후기를 적어주세요..." rows="6"></textarea>
         </div>
 
         <div id="photoFormsContainer"></div>
@@ -843,7 +880,6 @@
     let trips = [];
 
     let selectedPhotos = []; // 사진·영상 통합 목록. 각 항목 { file?, preview, content, type:'image'|'video', duration? }
-    let thumbnailPhoto = null; // 카톡 대표(썸네일) 사진: { file?, preview, url? }
     const VIDEO_MAX_SEC = 15;          // 영상 최대 길이(초)
     const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 영상 최대 용량(50MB)
     let currentTripIndex = 0;
@@ -897,13 +933,11 @@
           `;
         } else {
           // 사진이 없으면 텍스트 카드로 표시
-          const displayText = trip.caption || trip.content || '제목 없음';
-          const subText = (trip.caption && trip.content) ? trip.content : '';
+          const displayText = trip.caption || '제목 없음';
           return `
             <div class="trip-card" onclick="viewTrip('${trip.id}')" style="background: var(--bg-card); display: flex; align-items: center; justify-content: center; padding: 20px;">
               <div style="text-align: center; width: 100%;">
                 <div style="font-size: 18px; font-weight: 600; color: var(--text-light); margin-bottom: 12px;">${displayText}</div>
-                ${subText ? `<div style="font-size: 14px; color: var(--text-muted); line-height: 1.4; word-break: break-word;">${subText.substring(0, 100)}${subText.length > 100 ? '...' : ''}</div>` : ''}
               </div>
             </div>
           `;
@@ -953,19 +987,86 @@
       if (v.paused) v.play(); else v.pause();
     }
 
+    // ===== 음성 입력 (Web Speech API, 서버 비용 0) =====
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let micRecog = null, micActiveBtn = null, micActiveHint = null;
+
+    // 버튼 기준으로 같은 .mic-wrap 안의 textarea를 찾아 음성을 채운다 (어느 입력칸이든 재사용)
+    function toggleMic(btn) {
+      const wrap = btn.closest('.mic-wrap');
+      const ta = wrap && wrap.querySelector('textarea');
+      if (!ta) return;
+
+      // 이미 듣는 중이면 멈춤
+      if (micActiveBtn) { micRecog.stop(); return; }
+
+      if (!SpeechRec) {
+        alert('이 브라우저는 음성 입력을 지원하지 않아요.\n키보드의 마이크 버튼을 사용해 주세요. 🎤');
+        return;
+      }
+
+      micRecog = new SpeechRec();
+      micRecog.lang = 'ko-KR';
+      micRecog.continuous = true;
+      micRecog.interimResults = true;
+
+      const micBase = ta.value ? ta.value.replace(/\s*$/, '') + ' ' : '';
+      let finalText = '';
+
+      const sync = () => {
+        // 프로그램적 변경은 onchange가 자동 발생하지 않으므로 직접 알림(사진별 글 모델 갱신용)
+        ta.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      micRecog.onresult = (e) => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) finalText += t; else interim += t;
+        }
+        ta.value = micBase + finalText + interim;
+        sync();
+      };
+      const stopUI = () => {
+        if (micActiveBtn) micActiveBtn.classList.remove('listening');
+        if (micActiveHint) { micActiveHint.remove(); micActiveHint = null; }
+        micActiveBtn = null;
+      };
+      micRecog.onend = () => { sync(); stopUI(); };
+      micRecog.onerror = (e) => {
+        stopUI();
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          alert('마이크 권한이 필요해요. 브라우저 설정에서 마이크를 허용해 주세요.');
+        }
+      };
+
+      try {
+        micRecog.start();
+        micActiveBtn = btn;
+        btn.classList.add('listening');
+        // 활성 입력칸 바로 아래에 안내 문구 삽입
+        micActiveHint = document.createElement('div');
+        micActiveHint.className = 'mic-hint';
+        micActiveHint.textContent = '천천히 편하게 말씀하세요 (다시 누르면 멈춤)';
+        wrap.insertAdjacentElement('afterend', micActiveHint);
+      } catch (err) {
+        stopUI();
+      }
+    }
+
+    // 음성 인식 미지원 브라우저(일부 아이폰 등)에서는 모든 마이크 버튼 숨김
+    if (!SpeechRec) document.body.classList.add('no-speech');
+
     function goToHome() {
       showPage('homePage');
     }
 
     function goToWrite() {
       selectedPhotos = [];
-      thumbnailPhoto = null;
       editingTripId = null;
       document.getElementById('photoInput').value = '';
       document.getElementById('captionInput').value = '';
       document.getElementById('photoPreviewGrid').innerHTML = '';
       document.getElementById('photoFormsContainer').innerHTML = '';
-      renderThumbnail();
       showPage('writePage');
       loadTempData();
       initPhotoSortable();
@@ -1000,13 +1101,7 @@
         type: media.type || 'image'
       }));
 
-      // 대표(썸네일) 사진 복원
-      thumbnailPhoto = trip.thumb_url
-        ? { preview: trip.thumb_url, url: trip.thumb_url, file: null }
-        : null;
-
-      document.getElementById('captionInput').value = trip.caption;
-      document.getElementById('contentInput').value = trip.content;
+      document.getElementById('captionInput').value = trip.caption || '';
 
       document.getElementById('photoInput').value = '';
       document.getElementById('photoPreviewGrid').innerHTML = '';
@@ -1014,7 +1109,6 @@
 
       renderPhotoPreview();
       renderPhotoForms();
-      renderThumbnail();
 
       showPage('writePage');
       initPhotoSortable();
@@ -1147,50 +1241,18 @@
       probe.src = preview;
     }
 
-    // ===== 카톡 대표(썸네일) 사진 =====
-    function handleThumbnailSelect(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      thumbnailPhoto = { file, preview: URL.createObjectURL(file) };
-      event.target.value = '';
-      renderThumbnail();
-    }
-
-    function removeThumbnail(e) {
-      if (e) e.stopPropagation();
-      thumbnailPhoto = null;
-      renderThumbnail();
-    }
-
-    function renderThumbnail() {
-      const box = document.getElementById('thumbnailBox');
-      if (!box) return;
-      if (thumbnailPhoto) {
-        box.classList.add('has-image');
-        box.innerHTML = `
-          <img src="${thumbnailPhoto.preview}" alt="대표 사진">
-          <button type="button" class="thumb-remove-btn" onclick="removeThumbnail(event)">✕</button>
-        `;
-      } else {
-        box.classList.remove('has-image');
-        box.innerHTML = `<div class="thumb-placeholder">📷<br>대표사진<br>추가</div>`;
-      }
-    }
-
-    // 대표 사진을 Storage에 업로드하고 URL 반환 (기존 그대로면 그 URL, 없으면 null)
-    async function uploadThumbnail(tripId) {
-      if (!thumbnailPhoto) return null;
-      if (thumbnailPhoto.url && !thumbnailPhoto.file) return thumbnailPhoto.url;
-      const compressed = await compressImage(thumbnailPhoto.file);
-      const fileName = `thumb_${Date.now()}_${compressed.name}`;
-      const { error } = await getSupabase().storage
-        .from('trip-photos')
-        .upload(`${tripId}/${fileName}`, compressed);
-      if (error) throw error;
-      const { data: { publicUrl } } = getSupabase().storage
-        .from('trip-photos')
-        .getPublicUrl(`${tripId}/${fileName}`);
-      return publicUrl;
+    // 카톡 대표 이미지(thumb_url) = 후기의 '첫 사진'을 자동 사용 (영상 제외)
+    // 사진 업로드가 끝난 뒤 호출해서 trips.thumb_url을 갱신한다.
+    async function setCoverFromFirstPhoto(tripId) {
+      const { data: ph } = await getSupabase()
+        .from('photos')
+        .select('url,type,order_index')
+        .eq('trip_id', tripId)
+        .order('order_index', { ascending: true });
+      const firstImg = (ph || []).find(p => (p.type || 'image') === 'image');
+      await getSupabase().from('trips')
+        .update({ thumb_url: firstImg ? firstImg.url : null })
+        .eq('id', tripId);
     }
 
     function renderPhotoPreview() {
@@ -1266,12 +1328,15 @@
                 ${label}
               </div>
             </div>
-            <textarea
-              class="form-input"
-              placeholder="${ph}"
-              rows="3"
-              onchange="selectedPhotos[${index}].content = this.value"
-            >${item.content || ''}</textarea>
+            <div class="mic-wrap">
+              <textarea
+                class="form-input"
+                placeholder="${ph}"
+                rows="3"
+                onchange="selectedPhotos[${index}].content = this.value"
+              >${item.content || ''}</textarea>
+              <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력">🎤</button>
+            </div>
           </div>
         </div>
       `;
@@ -1335,10 +1400,9 @@
 
     async function handleSaveTrip() {
       const caption = document.getElementById('captionInput').value.trim();
-      const content = document.getElementById('contentInput').value.trim();
 
-      if (!caption && !content) {
-        alert('제목 또는 내용을 입력해주세요.');
+      if (!caption && selectedPhotos.length === 0) {
+        alert('제목을 입력하거나 사진·영상을 추가해주세요.');
         return;
       }
 
@@ -1350,7 +1414,7 @@
           // 기존 항목 수정
           const { error: updateError } = await getSupabase()
             .from('trips')
-            .update({ caption, content })
+            .update({ caption })
             .eq('id', editingTripId);
 
           if (updateError) throw updateError;
@@ -1392,16 +1456,15 @@
             }
           }));
 
-          // 대표(썸네일) 사진 업로드 후 URL 저장
-          const thumbUrlE = await uploadThumbnail(tripIdForUpload);
-          await getSupabase().from('trips').update({ thumb_url: thumbUrlE }).eq('id', tripIdForUpload);
+          // 카톡 대표 이미지 = 첫 사진 자동 지정
+          await setCoverFromFirstPhoto(tripIdForUpload);
 
           editingTripId = null;
         } else {
           // 새로운 항목 추가
           const { data: tripData, error: tripError } = await getSupabase()
             .from('trips')
-            .insert({ caption, content })
+            .insert({ caption })
             .select();
 
           if (tripError) throw tripError;
@@ -1437,14 +1500,12 @@
             if (insertError) throw insertError;
           }));
 
-          // 대표(썸네일) 사진 업로드 후 URL 저장
-          const thumbUrlN = await uploadThumbnail(tripId);
-          await getSupabase().from('trips').update({ thumb_url: thumbUrlN }).eq('id', tripId);
+          // 카톡 대표 이미지 = 첫 사진 자동 지정
+          await setCoverFromFirstPhoto(tripId);
         }
 
         localStorage.removeItem('rabongTempData');
         document.getElementById('captionInput').value = '';
-        document.getElementById('contentInput').value = '';
         await loadTrips();
         renderFeed();
         hideLoading();
@@ -1507,10 +1568,12 @@
       const ogUrl = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.id + '&v=' + shortHash(trip.thumb_url || trip.id);
 
       // 카드 내용 (지금 데이터로 자동 구성)
+      const firstImage = (trip.photos || []).find(p => (p.type || 'image') === 'image');
+      const firstNote = (trip.photos || []).find(p => p.content && p.content.trim());
       const title = trip.caption || '라봉 낚시 후기';
-      const description = (trip.content || '').trim().slice(0, 100) || '후기를 공유합니다 🎣';
+      const description = (firstNote ? firstNote.content : '').trim().slice(0, 100) || '후기를 공유합니다 🎣';
       const imageUrl = trip.thumb_url
-        || (trip.photos && trip.photos[0] && trip.photos[0].url)
+        || (firstImage && firstImage.url)
         || 'https://kmeimei2017-max.github.io/Ra-Review/og-image.png';
 
       // ① 카카오 SDK 준비됨 → 카톡 공유 카드(원터치, 큰 카드 + 버튼)
