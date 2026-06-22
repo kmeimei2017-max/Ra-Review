@@ -79,7 +79,8 @@ html,body{margin:0;height:100%;font-family:'Noto Sans KR',sans-serif;background:
 .dot.active{background:#ef4444;transform:scale(1.5);box-shadow:0 0 10px rgba(239,68,68,.9);}
 .hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:50;color:#fff;opacity:.7;text-align:center;animation:bob 1.6s ease-in-out infinite;}
 @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(-8px);}}
-.shareBtn{position:fixed;left:12px;bottom:14px;z-index:60;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:12px;padding:7px 12px;border-radius:20px;backdrop-filter:blur(4px);}
+.shareBtn{position:fixed;right:18px;bottom:26px;z-index:60;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);color:#fff;font-size:24px;font-weight:700;padding:14px 28px;border-radius:34px;backdrop-filter:blur(4px);display:none;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+.shareBtn.show{display:block;}
 .txt-xl{font-size:1.25rem;line-height:1.65;}@media(min-width:768px){.txt-xl{font-size:1.5rem;}}
 </style>
 </head>
@@ -286,7 +287,7 @@ function start(n){
   }
 }
 
-const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>.55){const i=acts.indexOf(e.target);acts.forEach(a=>a.classList.remove('on'));e.target.classList.add('on');dots.forEach(d=>d.classList.remove('active'));dots[i].classList.add('active');start(i+1);const h=document.querySelector('.hint');if(i>0&&h)h.style.display='none';}});},{threshold:[.55]});
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>.55){const i=acts.indexOf(e.target);acts.forEach(a=>a.classList.remove('on'));e.target.classList.add('on');dots.forEach(d=>d.classList.remove('active'));dots[i].classList.add('active');start(i+1);document.getElementById('shareBtn').classList.toggle('show',(i+1)===10);const h=document.querySelector('.hint');if(i>0&&h)h.style.display='none';}});},{threshold:[.55]});
 acts.forEach(a=>io.observe(a));
 start(1);
 
