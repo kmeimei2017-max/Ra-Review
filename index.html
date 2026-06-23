@@ -1043,6 +1043,22 @@
       const ta = wrap && wrap.querySelector('textarea');
       if (!ta) return;
 
+      // ── 모바일: '키보드 마이크 안내' 모드 ──
+      // 갤럭시/아이폰 키보드 음성이 훨씬 부드럽고 권한·세션 문제도 없음.
+      // 우리 버튼은 펄스+안내만 담당하고, 실제 받아쓰기는 키보드 마이크에 맡긴다.
+      if (micIsMobile) {
+        if (micActiveBtn) { micStopUI(); return; } // 다시 누르면 안내 끔
+        ta.focus(); // 키보드 올리기
+        micActiveBtn = btn;
+        btn.classList.add('listening');
+        micActiveHint = document.createElement('div');
+        micActiveHint.className = 'mic-hint';
+        micActiveHint.textContent = '키보드의 마이크(🎤)를 눌러 천천히 말씀하세요 (다시 누르면 멈춤)';
+        wrap.insertAdjacentElement('afterend', micActiveHint);
+        return;
+      }
+
+      // ── PC: 직접 음성인식(Web Speech) ──
       // 이미 듣는 중이면 멈춤(자동 재시작도 중단)
       if (micActiveBtn) { micStop = true; if (micRecog) micRecog.stop(); return; }
 
@@ -1073,8 +1089,9 @@
       }
     }
 
-    // 음성 인식 미지원 브라우저(일부 아이폰 등)에서는 모든 마이크 버튼 숨김
-    if (!SpeechRec) document.body.classList.add('no-speech');
+    // PC에서 음성 인식 미지원이면 마이크 버튼 숨김.
+    // 모바일은 Web Speech 없이도 '키보드 마이크 안내' 모드로 동작하므로 항상 표시(아이폰 포함).
+    if (!SpeechRec && !micIsMobile) document.body.classList.add('no-speech');
 
     function goToHome() {
       showPage('homePage');
