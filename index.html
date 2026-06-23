@@ -294,7 +294,6 @@
       background: #2563eb;
       color: #fff;
       border: none;
-      font-size: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -302,6 +301,7 @@
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
       z-index: 2;
     }
+    .mic-ico { width: 22px; height: 22px; display: block; }
     .mic-fab.listening {
       background: #ef4444;
       animation: micPulse 2.6s ease-out infinite;
@@ -320,11 +320,84 @@
       0%   { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.55); }
       100% { box-shadow: 0 0 0 36px rgba(37, 99, 235, 0); }
     }
-    /* 듣는 중 안내 문구 (활성 입력칸 바로 아래) */
+    /* 듣는 중 안내 문구 */
     .mic-hint {
       font-size: var(--font-size);
       color: #ef4444;
-      margin-top: 8px;
+      margin: 0 0 8px;
+    }
+    .mic-hint .mic-ico { width: 18px; height: 18px; display: inline-block; vertical-align: -4px; }
+
+    /* ===== 첫 1회 음성 온보딩 카드 ===== */
+    .mic-onboard-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .mic-onboard-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      border-radius: 16px;
+      padding: 26px 22px;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+      color: var(--text-light);
+    }
+    .ob-mic {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+    .ob-mic .mic-ico { width: 30px; height: 30px; }
+    .mic-onboard-card h3 { margin: 0 0 8px; font-size: 19px; }
+    .mic-onboard-card p { margin: 0 0 16px; font-size: 14px; line-height: 1.65; color: var(--text-muted); }
+    /* 키보드 일러스트 */
+    .ob-kbd {
+      border: 1px solid var(--border-dark);
+      border-radius: 10px;
+      padding: 10px;
+      background: #0d0d0d;
+      margin: 0 0 6px;
+    }
+    .ob-kbd-row { display: flex; gap: 4px; justify-content: center; margin-bottom: 4px; }
+    .ob-kbd-row:last-child { margin-bottom: 0; }
+    .ob-kbd-key { flex: 1; height: 13px; background: #2a2a2a; border-radius: 3px; }
+    .ob-kbd-space { flex: 4; }
+    .ob-kbd-mic {
+      flex: 0 0 22px;
+      height: 22px;
+      background: #2563eb;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      animation: micPulseBlue 2.6s ease-out infinite;
+    }
+    .ob-kbd-mic .mic-ico { width: 13px; height: 13px; }
+    .ob-note { font-size: 12.5px; color: var(--text-muted); margin: 0 0 18px; }
+    .ob-btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
     }
 
     /* 제목칸은 flex 레이아웃이라 래퍼도 늘어나야 함 */
@@ -841,7 +914,7 @@
           <label class="form-label">제목</label>
           <div class="mic-wrap">
             <textarea id="captionInput" class="form-input" placeholder="예: 동해호 광어 대박! (2026.06.17 후포항)" rows="3"></textarea>
-            <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력">🎤</button>
+            <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력"><svg class="mic-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg></button>
           </div>
         </div>
 
@@ -997,6 +1070,8 @@
     }
 
     // ===== 음성 입력 (Web Speech API, 서버 비용 0) =====
+    // 표준 마이크 아이콘 — 키보드 마이크와 모양을 맞춰 찾기 쉽게 (버튼·안내·온보딩 공용)
+    const MIC_SVG = '<svg class="mic-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>';
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     const micIsMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     let micRecog = null, micActiveBtn = null, micActiveHint = null;
@@ -1046,6 +1121,52 @@
       return r;
     }
 
+    // 모바일: 우리 버튼은 안내만 — 키보드 띄우고 파란 펄스 + 짧은 안내(입력칸 위라 키보드에 안 가림)
+    function startMobileMicGuide(btn) {
+      const wrap = btn.closest('.mic-wrap');
+      const ta = wrap && wrap.querySelector('textarea');
+      if (!ta) return;
+      ta.focus();
+      micActiveBtn = btn;
+      btn.classList.add('guiding');
+      micActiveHint = document.createElement('div');
+      micActiveHint.className = 'mic-hint';
+      micActiveHint.style.color = '#93c5fd';
+      micActiveHint.innerHTML = MIC_SVG + ' 키보드의 마이크를 눌러 말하세요 <span style="opacity:.7">· 다시 누르면 멈춤</span>';
+      wrap.insertAdjacentElement('beforebegin', micActiveHint); // 입력칸 '위' → 키보드에 안 가림
+    }
+
+    // 첫 1회 음성 온보딩 — 키보드 마이크 위치를 그림으로 안내
+    function showMicOnboard(btn) {
+      const keys = (n) => '<span class="ob-kbd-key"></span>'.repeat(n);
+      const ov = document.createElement('div');
+      ov.className = 'mic-onboard-overlay';
+      ov.innerHTML = `
+        <div class="mic-onboard-card">
+          <div class="ob-mic">${MIC_SVG}</div>
+          <h3>음성으로 쓰기</h3>
+          <p>키보드의 <b>마이크 버튼</b>을 누르면 말로 입력돼요.<br>아래처럼 생긴 아이콘이에요.</p>
+          <div class="ob-kbd">
+            <div class="ob-kbd-row">${keys(9)}</div>
+            <div class="ob-kbd-row">${keys(8)}</div>
+            <div class="ob-kbd-row">
+              <span class="ob-kbd-mic">${MIC_SVG}</span>
+              <span class="ob-kbd-key"></span>
+              <span class="ob-kbd-key ob-kbd-space"></span>
+              <span class="ob-kbd-key"></span>
+            </div>
+          </div>
+          <div class="ob-note">키보드마다 위치가 달라요 — 보통 <b>왼쪽 아래</b>나 <b>상단 줄</b>에 있어요 🙂</div>
+          <button type="button" class="ob-btn">알겠어요</button>
+        </div>`;
+      document.body.appendChild(ov);
+      ov.querySelector('.ob-btn').addEventListener('click', () => {
+        localStorage.setItem('rabong_mic_onboarded', '1');
+        ov.remove();
+        startMobileMicGuide(btn); // 같은 클릭 제스처 흐름에서 키보드 띄움
+      });
+    }
+
     // 버튼 기준으로 같은 .mic-wrap 안의 textarea를 찾아 음성을 채운다 (어느 입력칸이든 재사용)
     function toggleMic(btn) {
       const wrap = btn.closest('.mic-wrap');
@@ -1057,14 +1178,9 @@
       // 우리 버튼은 펄스+안내만 담당하고, 실제 받아쓰기는 키보드 마이크에 맡긴다.
       if (micIsMobile) {
         if (micActiveBtn) { micStopUI(); return; } // 다시 누르면 안내 끔
-        ta.focus(); // 키보드 올리기
-        micActiveBtn = btn;
-        btn.classList.add('guiding'); // 파란색 유지 + 파란 잔물결
-        micActiveHint = document.createElement('div');
-        micActiveHint.className = 'mic-hint';
-        micActiveHint.style.color = '#93c5fd'; // 파란 모드에 맞춘 밝은 파랑
-        micActiveHint.innerHTML = '키보드의 마이크(🎤)를 눌러 천천히 말씀하세요 <span style="opacity:.7">· 다시 누르면 멈춤</span><br><span style="opacity:.7;font-size:13px">🎤가 두 개라 번거롭지만, 키보드 마이크가 음성을 가장 잘 알아들어요 🙏</span>';
-        wrap.insertAdjacentElement('afterend', micActiveHint);
+        // 첫 1회: 키보드 마이크 위치를 그림으로 안내 → '알겠어요' 후 진행
+        if (!localStorage.getItem('rabong_mic_onboarded')) { showMicOnboard(btn); return; }
+        startMobileMicGuide(btn);
         return;
       }
 
@@ -1382,7 +1498,7 @@
                 rows="3"
                 onchange="selectedPhotos[${index}].content = this.value"
               >${item.content || ''}</textarea>
-              <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력">🎤</button>
+              <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력">${MIC_SVG}</button>
             </div>
           </div>
         </div>
