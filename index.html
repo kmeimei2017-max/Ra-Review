@@ -364,29 +364,29 @@
     .mic-onboard-card h3 { margin: 0 0 8px; font-size: 19px; }
     .mic-onboard-card p { margin: 0 0 16px; font-size: 14px; line-height: 1.65; color: var(--text-muted); }
     /* 키보드 일러스트 */
-    .ob-kbd {
+    /* 실제 키보드 이미지 (온보딩) — 이미지에 그려둔 파란 동그라미 위에 펄스만 얹음 */
+    .ob-kbd-img { position: relative; margin: 0 0 20px; }
+    .ob-kbd-img img {
+      width: 100%;
+      display: block;
+      border-radius: 8px;
       border: 1px solid var(--border-dark);
-      border-radius: 10px;
-      padding: 10px;
-      background: #0d0d0d;
-      margin: 0 0 6px;
     }
-    .ob-kbd-row { display: flex; gap: 4px; justify-content: center; margin-bottom: 4px; }
-    .ob-kbd-row:last-child { margin-bottom: 0; }
-    .ob-kbd-key { flex: 1; height: 13px; background: #2a2a2a; border-radius: 3px; }
-    .ob-kbd-space { flex: 4; }
-    .ob-kbd-mic {
-      flex: 0 0 22px;
-      height: 22px;
-      background: #2563eb;
-      border-radius: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      animation: micPulseBlue 2.6s ease-out infinite;
+    .ob-kbd-pin {
+      position: absolute;
+      left: 10.2%;
+      top: 88.6%;
+      width: 30px;
+      height: 30px;
+      margin: -15px 0 0 -15px;
+      border-radius: 50%;
+      background: transparent;
+      animation: obMicPulse 2.2s ease-out infinite;
     }
-    .ob-kbd-mic .mic-ico { width: 13px; height: 13px; }
+    @keyframes obMicPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
+      100% { box-shadow: 0 0 0 24px rgba(59, 130, 246, 0); }
+    }
     .ob-note { font-size: 12.5px; color: var(--text-muted); margin: 0 0 18px; }
     .ob-btn {
       width: 100%;
@@ -1138,25 +1138,17 @@
 
     // 첫 1회 음성 온보딩 — 키보드 마이크 위치를 그림으로 안내
     function showMicOnboard(btn) {
-      const keys = (n) => '<span class="ob-kbd-key"></span>'.repeat(n);
       const ov = document.createElement('div');
       ov.className = 'mic-onboard-overlay';
       ov.innerHTML = `
         <div class="mic-onboard-card">
           <div class="ob-mic">${MIC_SVG}</div>
-          <h3>음성으로 쓰기</h3>
-          <p>키보드의 <b>마이크 버튼</b>을 누르면 말로 입력돼요.<br>아래처럼 생긴 아이콘이에요.</p>
-          <div class="ob-kbd">
-            <div class="ob-kbd-row">${keys(9)}</div>
-            <div class="ob-kbd-row">${keys(8)}</div>
-            <div class="ob-kbd-row">
-              <span class="ob-kbd-mic">${MIC_SVG}</span>
-              <span class="ob-kbd-key"></span>
-              <span class="ob-kbd-key ob-kbd-space"></span>
-              <span class="ob-kbd-key"></span>
-            </div>
+          <h3>음성인식</h3>
+          <p>핸드폰 마이크를 누르면 입력돼요 ^^</p>
+          <div class="ob-kbd-img">
+            <img src="kbd_guide.png" alt="키보드 마이크 위치">
+            <span class="ob-kbd-pin"></span>
           </div>
-          <div class="ob-note">키보드마다 위치가 달라요 — 보통 <b>왼쪽 아래</b>나 <b>상단 줄</b>에 있어요 🙂</div>
           <button type="button" class="ob-btn">알겠어요</button>
         </div>`;
       document.body.appendChild(ov);
