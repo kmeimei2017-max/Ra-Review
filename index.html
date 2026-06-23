@@ -327,7 +327,7 @@
       margin: 0 0 8px;
     }
     .mic-hint .mic-ico { width: 18px; height: 18px; display: inline-block; vertical-align: -4px; }
-    /* 모바일 안내문 — 입력칸 아래, 아이콘+↙화살표 | 텍스트 2줄 */
+    /* 모바일 안내문 — 입력칸 아래, 아이콘+↓화살표 | 텍스트 2줄 */
     .mic-hint-guide {
       display: flex;
       align-items: center;
@@ -1140,7 +1140,7 @@
       return r;
     }
 
-    // 모바일: 온보딩 확인 후 — 키보드 올리고 ↙화살표로 키보드 마이크 위치를 잠깐 안내(자동 사라짐)
+    // 모바일: 온보딩 확인 후 — 키보드 올리고 ↓화살표로 키보드 마이크 위치를 잠깐 안내(자동 사라짐)
     function showMicArrowHint(btn) {
       const wrap = btn.closest('.mic-wrap');
       const ta = wrap && wrap.querySelector('textarea');
@@ -1149,7 +1149,7 @@
       const hint = document.createElement('div');
       hint.className = 'mic-hint mic-hint-guide';
       hint.innerHTML = `
-        <span class="mh-ico">${MIC_SVG}<span class="mh-arrow">↙</span></span>
+        <span class="mh-ico">${MIC_SVG}<span class="mh-arrow">↓</span></span>
         <span class="mh-txt">키보드 마이크를 눌러 말하세요<br><span class="mh-sub">왼쪽 아래에 있어요</span></span>`;
       wrap.insertAdjacentElement('afterend', hint); // 입력칸 '아래'(키보드 쪽)
       setTimeout(() => { if (hint.parentNode) hint.remove(); }, 6000); // 잠깐 보여주고 사라짐
@@ -1175,7 +1175,7 @@
         if (ov.querySelector('#obDontShow').checked) localStorage.setItem('rabong_mic_hidden', '1');
         ov.remove();
         document.body.classList.add('mic-hidden'); // 파란 버튼 사라짐(이번 세션)
-        showMicArrowHint(btn);                     // 키보드 + ↙화살표 안내
+        showMicArrowHint(btn);                     // 키보드 + ↓화살표 안내
       });
     }
 
