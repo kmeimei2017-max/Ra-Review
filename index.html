@@ -1211,6 +1211,9 @@
     // 모바일은 Web Speech 없이도 '키보드 마이크 안내' 모드로 동작하므로 항상 표시(아이폰 포함).
     if (!SpeechRec && !micIsMobile) document.body.classList.add('no-speech');
 
+    // 주소에 ?ob=1 이 있으면 온보딩 '본 적 있음' 기록을 지워 다시 보이게 (테스트·안내용)
+    if (/[?&]ob=1/.test(location.search)) localStorage.removeItem('rabong_mic_onboarded');
+
     function goToHome() {
       showPage('homePage');
     }
