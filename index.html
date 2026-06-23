@@ -1007,7 +1007,9 @@
 
       micRecog = new SpeechRec();
       micRecog.lang = 'ko-KR';
-      micRecog.continuous = true;
+      // 모바일 크롬은 결과를 누적식으로 줘서 연속 모드면 중복됨 → 모바일은 한 발화씩 인식 후 자동 종료
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      micRecog.continuous = !isMobile;
       micRecog.interimResults = true;
 
       const micBase = ta.value ? ta.value.replace(/\s*$/, '') + ' ' : '';
@@ -1045,7 +1047,9 @@
         // 활성 입력칸 바로 아래에 안내 문구 삽입
         micActiveHint = document.createElement('div');
         micActiveHint.className = 'mic-hint';
-        micActiveHint.textContent = '천천히 편하게 말씀하세요 (다시 누르면 멈춤)';
+        micActiveHint.textContent = isMobile
+          ? '천천히 또박또박 말씀하세요 (끝나면 자동 멈춤)'
+          : '천천히 편하게 말씀하세요 (다시 누르면 멈춤)';
         wrap.insertAdjacentElement('afterend', micActiveHint);
       } catch (err) {
         stopUI();
