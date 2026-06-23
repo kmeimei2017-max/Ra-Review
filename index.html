@@ -421,6 +421,9 @@
     /* 음성인식 미지원 기기: 마이크 숨기고 입력칸 여백 복원 */
     body.no-speech .mic-fab { display: none; }
     body.no-speech .mic-wrap .form-input { padding-bottom: 14px; }
+    /* 모바일: 온보딩 확인/5회 접속/다시안보기 후 우리 마이크 버튼 숨김(시선을 키보드 마이크로) */
+    body.mic-hidden .mic-fab { display: none; }
+    body.mic-hidden .mic-wrap .form-input { padding-bottom: 14px; }
 
     .slide-content {
       position: absolute;
@@ -1137,20 +1140,19 @@
       return r;
     }
 
-    // 모바일: 우리 버튼은 안내만 — 키보드 띄우고 파란 펄스 + 짧은 안내(입력칸 위라 키보드에 안 가림)
-    function startMobileMicGuide(btn) {
+    // 모바일: 온보딩 확인 후 — 키보드 올리고 ↙화살표로 키보드 마이크 위치를 잠깐 안내(자동 사라짐)
+    function showMicArrowHint(btn) {
       const wrap = btn.closest('.mic-wrap');
       const ta = wrap && wrap.querySelector('textarea');
       if (!ta) return;
-      ta.focus();
-      micActiveBtn = btn;
-      btn.classList.add('guiding');
-      micActiveHint = document.createElement('div');
-      micActiveHint.className = 'mic-hint mic-hint-guide';
-      micActiveHint.innerHTML = `
+      ta.focus(); // 키보드 올리기
+      const hint = document.createElement('div');
+      hint.className = 'mic-hint mic-hint-guide';
+      hint.innerHTML = `
         <span class="mh-ico">${MIC_SVG}<span class="mh-arrow">↙</span></span>
-        <span class="mh-txt">키보드 마이크를 눌러 말하세요<br><span class="mh-sub">다시 누르면 멈춤</span></span>`;
-      wrap.insertAdjacentElement('afterend', micActiveHint); // 입력칸 '아래'(키보드 쪽)
+        <span class="mh-txt">키보드 마이크를 눌러 말하세요<br><span class="mh-sub">왼쪽 아래에 있어요</span></span>`;
+      wrap.insertAdjacentElement('afterend', hint); // 입력칸 '아래'(키보드 쪽)
+      setTimeout(() => { if (hint.parentNode) hint.remove(); }, 6000); // 잠깐 보여주고 사라짐
     }
 
     // 첫 1회 음성 온보딩 — 키보드 마이크 위치를 그림으로 안내
@@ -1169,10 +1171,11 @@
         </div>`;
       document.body.appendChild(ov);
       ov.querySelector('.ob-btn').addEventListener('click', () => {
-        // 체크했을 때만 '본 적 있음'으로 각인 → 다음부터 안 뜸 (체크 안 하면 다음에 또 안내)
-        if (ov.querySelector('#obDontShow').checked) localStorage.setItem('rabong_mic_onboarded', '1');
+        // 체크 시 영구 숨김. 체크 안 해도 이번 세션은 버튼 숨겨 시선을 키보드 마이크로
+        if (ov.querySelector('#obDontShow').checked) localStorage.setItem('rabong_mic_hidden', '1');
         ov.remove();
-        startMobileMicGuide(btn); // 같은 클릭 제스처 흐름에서 키보드 띄움
+        document.body.classList.add('mic-hidden'); // 파란 버튼 사라짐(이번 세션)
+        showMicArrowHint(btn);                     // 키보드 + ↙화살표 안내
       });
     }
 
@@ -1186,10 +1189,8 @@
       // 갤럭시/아이폰 키보드 음성이 훨씬 부드럽고 권한·세션 문제도 없음.
       // 우리 버튼은 펄스+안내만 담당하고, 실제 받아쓰기는 키보드 마이크에 맡긴다.
       if (micIsMobile) {
-        if (micActiveBtn) { micStopUI(); return; } // 다시 누르면 안내 끔
-        // 첫 1회: 키보드 마이크 위치를 그림으로 안내 → '알겠어요' 후 진행
-        if (!localStorage.getItem('rabong_mic_onboarded')) { showMicOnboard(btn); return; }
-        startMobileMicGuide(btn);
+        // 온보딩 팝업 → 확인 시 버튼 숨김 + 키보드 + 화살표 안내
+        showMicOnboard(btn);
         return;
       }
 
@@ -1228,8 +1229,19 @@
     // 모바일은 Web Speech 없이도 '키보드 마이크 안내' 모드로 동작하므로 항상 표시(아이폰 포함).
     if (!SpeechRec && !micIsMobile) document.body.classList.add('no-speech');
 
-    // 주소에 ?ob=1 이 있으면 온보딩 '본 적 있음' 기록을 지워 다시 보이게 (테스트·안내용)
-    if (/[?&]ob=1/.test(location.search)) localStorage.removeItem('rabong_mic_onboarded');
+    // 모바일 마이크 버튼 노출 정책: 접속 5번까지 노출 → 이후 자동 숨김(시선을 키보드 마이크로).
+    // '다시 보지 않기' 체크 시 즉시 영구 숨김. ?ob=1 이면 리셋(다시 보기).
+    if (micIsMobile) {
+      if (/[?&]ob=1/.test(location.search)) {
+        localStorage.removeItem('rabong_mic_visits');
+        localStorage.removeItem('rabong_mic_hidden');
+      }
+      const micVisits = (parseInt(localStorage.getItem('rabong_mic_visits'), 10) || 0) + 1;
+      localStorage.setItem('rabong_mic_visits', micVisits);
+      if (localStorage.getItem('rabong_mic_hidden') === '1' || micVisits > 5) {
+        document.body.classList.add('mic-hidden');
+      }
+    }
 
     function goToHome() {
       showPage('homePage');
