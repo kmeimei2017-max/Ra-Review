@@ -989,7 +989,53 @@
 
     // ===== 음성 입력 (Web Speech API, 서버 비용 0) =====
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const micIsMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
     let micRecog = null, micActiveBtn = null, micActiveHint = null;
+    let micTextarea = null, micBase = '', micCommitted = '', micSession = '', micStop = false;
+
+    function micSync() {
+      // 프로그램적 변경은 onchange가 자동 발생하지 않으므로 직접 알림(사진별 글 모델 갱신용)
+      if (micTextarea) micTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    function micStopUI() {
+      if (micActiveBtn) micActiveBtn.classList.remove('listening');
+      if (micActiveHint) { micActiveHint.remove(); micActiveHint = null; }
+      micActiveBtn = null;
+    }
+    // 인식기는 한 번만 만들어 재사용한다 (매번 new 하면 권한을 매번 묻게 됨)
+    function micBuild() {
+      const r = new SpeechRec();
+      r.lang = 'ko-KR';
+      r.interimResults = true;
+      // 모바일 크롬은 결과를 누적식으로 줘서 연속 모드면 중복됨 → 모바일은 단발 + onend 자동 재시작으로 연속처럼
+      r.continuous = !micIsMobile;
+      r.onresult = (e) => {
+        let txt = '';
+        for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+        micSession = txt;
+        if (micTextarea) micTextarea.value = micBase + micCommitted + micSession;
+        micSync();
+      };
+      r.onend = () => {
+        // 이번 세션 인식분을 확정 누적
+        if (micSession) { micCommitted += micSession.replace(/\s*$/, '') + ' '; micSession = ''; }
+        // 모바일: 멈춤 요청이 없으면 자동 재시작 → 한 번 탭으로 계속 말하기(권한도 한 번)
+        if (micIsMobile && !micStop && micActiveBtn) {
+          try { r.start(); return; } catch (err) { /* 재시작 불가 시 종료 */ }
+        }
+        micStopUI();
+      };
+      r.onerror = (e) => {
+        // 무음으로 끝난 경우(모바일)는 onend의 자동 재시작에 맡김
+        if (e.error === 'no-speech' && micIsMobile && !micStop && micActiveBtn) return;
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          micStop = true;
+          micStopUI();
+          alert('마이크 권한이 필요해요. 브라우저 설정에서 마이크를 허용해 주세요.');
+        }
+      };
+      return r;
+    }
 
     // 버튼 기준으로 같은 .mic-wrap 안의 textarea를 찾아 음성을 채운다 (어느 입력칸이든 재사용)
     function toggleMic(btn) {
@@ -997,62 +1043,33 @@
       const ta = wrap && wrap.querySelector('textarea');
       if (!ta) return;
 
-      // 이미 듣는 중이면 멈춤
-      if (micActiveBtn) { micRecog.stop(); return; }
+      // 이미 듣는 중이면 멈춤(자동 재시작도 중단)
+      if (micActiveBtn) { micStop = true; if (micRecog) micRecog.stop(); return; }
 
       if (!SpeechRec) {
         alert('이 브라우저는 음성 입력을 지원하지 않아요.\n키보드의 마이크 버튼을 사용해 주세요. 🎤');
         return;
       }
 
-      micRecog = new SpeechRec();
-      micRecog.lang = 'ko-KR';
-      // 모바일 크롬은 결과를 누적식으로 줘서 연속 모드면 중복됨 → 모바일은 한 발화씩 인식 후 자동 종료
-      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-      micRecog.continuous = !isMobile;
-      micRecog.interimResults = true;
-
-      const micBase = ta.value ? ta.value.replace(/\s*$/, '') + ' ' : '';
-
-      const sync = () => {
-        // 프로그램적 변경은 onchange가 자동 발생하지 않으므로 직접 알림(사진별 글 모델 갱신용)
-        ta.dispatchEvent(new Event('change', { bubbles: true }));
-      };
-      micRecog.onresult = (e) => {
-        // e.results는 누적 배열 → 매 이벤트마다 처음부터 전체 재조립(중복 누적 방지, 모바일 크롬 호환)
-        let full = '';
-        for (let i = 0; i < e.results.length; i++) {
-          full += e.results[i][0].transcript;
-        }
-        ta.value = micBase + full;
-        sync();
-      };
-      const stopUI = () => {
-        if (micActiveBtn) micActiveBtn.classList.remove('listening');
-        if (micActiveHint) { micActiveHint.remove(); micActiveHint = null; }
-        micActiveBtn = null;
-      };
-      micRecog.onend = () => { sync(); stopUI(); };
-      micRecog.onerror = (e) => {
-        stopUI();
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-          alert('마이크 권한이 필요해요. 브라우저 설정에서 마이크를 허용해 주세요.');
-        }
-      };
+      micTextarea = ta;
+      micBase = ta.value ? ta.value.replace(/\s*$/, '') + ' ' : '';
+      micCommitted = '';
+      micSession = '';
+      micStop = false;
+      if (!micRecog) micRecog = micBuild();
 
       try {
         micRecog.start();
         micActiveBtn = btn;
         btn.classList.add('listening');
-        // 활성 입력칸 바로 아래에 안내 문구 삽입
         micActiveHint = document.createElement('div');
         micActiveHint.className = 'mic-hint';
-        micActiveHint.textContent = isMobile
-          ? '천천히 또박또박 말씀하세요 (끝나면 자동 멈춤)'
+        micActiveHint.textContent = micIsMobile
+          ? '천천히 편하게 말씀하세요 (다 끝나면 다시 눌러 멈춤)'
           : '천천히 편하게 말씀하세요 (다시 누르면 멈춤)';
         wrap.insertAdjacentElement('afterend', micActiveHint);
       } catch (err) {
-        stopUI();
+        micStopUI();
       }
     }
 
