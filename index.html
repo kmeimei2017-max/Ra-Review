@@ -327,6 +327,25 @@
       margin: 0 0 8px;
     }
     .mic-hint .mic-ico { width: 18px; height: 18px; display: inline-block; vertical-align: -4px; }
+    /* 모바일 안내문 — 입력칸 아래, 아이콘+↙화살표 | 텍스트 2줄 */
+    .mic-hint-guide {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #93c5fd;
+      margin: 10px 0 0;
+    }
+    .mh-ico {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #3b82f6;
+      flex-shrink: 0;
+    }
+    .mh-ico .mic-ico { width: 24px; height: 24px; vertical-align: 0; }
+    .mh-arrow { font-size: 18px; line-height: 1; margin-top: -2px; }
+    .mh-txt { font-size: 16px; line-height: 1.45; text-align: left; }
+    .mh-sub { font-size: 13px; opacity: 0.7; }
 
     /* ===== 첫 1회 음성 온보딩 카드 ===== */
     .mic-onboard-overlay {
@@ -1127,10 +1146,11 @@
       micActiveBtn = btn;
       btn.classList.add('guiding');
       micActiveHint = document.createElement('div');
-      micActiveHint.className = 'mic-hint';
-      micActiveHint.style.color = '#93c5fd';
-      micActiveHint.innerHTML = MIC_SVG + ' 키보드의 마이크를 눌러 말하세요 <span style="opacity:.7">· 다시 누르면 멈춤</span>';
-      wrap.insertAdjacentElement('beforebegin', micActiveHint); // 입력칸 '위' → 키보드에 안 가림
+      micActiveHint.className = 'mic-hint mic-hint-guide';
+      micActiveHint.innerHTML = `
+        <span class="mh-ico">${MIC_SVG}<span class="mh-arrow">↙</span></span>
+        <span class="mh-txt">키보드 마이크를 눌러 말하세요<br><span class="mh-sub">다시 누르면 멈춤</span></span>`;
+      wrap.insertAdjacentElement('afterend', micActiveHint); // 입력칸 '아래'(키보드 쪽)
     }
 
     // 첫 1회 음성 온보딩 — 키보드 마이크 위치를 그림으로 안내
