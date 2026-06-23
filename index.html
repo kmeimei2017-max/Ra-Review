@@ -349,21 +349,7 @@
       text-align: center;
       color: var(--text-light);
     }
-    .ob-mic {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: #2563eb;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 14px;
-    }
-    .ob-mic .mic-ico { width: 30px; height: 30px; }
-    .mic-onboard-card h3 { margin: 0 0 8px; font-size: 19px; }
-    .mic-onboard-card p { margin: 0 0 16px; font-size: 14px; line-height: 1.65; color: var(--text-muted); }
-    /* 키보드 일러스트 */
+    .ob-lead { margin: 4px 0 18px; font-size: 19px; font-weight: 700; line-height: 1.5; color: var(--text-light); }
     /* 실제 키보드 이미지 (온보딩) — 이미지에 그려둔 파란 동그라미 위에 펄스만 얹음 */
     .ob-kbd-img { position: relative; margin: 0 0 20px; }
     .ob-kbd-img img {
@@ -388,6 +374,17 @@
       100% { box-shadow: 0 0 0 24px rgba(59, 130, 246, 0); }
     }
     .ob-note { font-size: 12.5px; color: var(--text-muted); margin: 0 0 18px; }
+    .ob-check {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 0 0 16px;
+      font-size: 15px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .ob-check input { width: 18px; height: 18px; accent-color: #2563eb; }
     .ob-btn {
       width: 100%;
       padding: 13px;
@@ -1142,18 +1139,18 @@
       ov.className = 'mic-onboard-overlay';
       ov.innerHTML = `
         <div class="mic-onboard-card">
-          <div class="ob-mic">${MIC_SVG}</div>
-          <h3>음성인식</h3>
-          <p>핸드폰 마이크를 누르면 입력돼요 ^^</p>
+          <p class="ob-lead">핸드폰 마이크를 누르면 입력돼요 ^^</p>
           <div class="ob-kbd-img">
             <img src="kbd_guide.png" alt="키보드 마이크 위치">
             <span class="ob-kbd-pin"></span>
           </div>
-          <button type="button" class="ob-btn">알겠어요</button>
+          <label class="ob-check"><input type="checkbox" id="obDontShow"> 다시 보지 않기</label>
+          <button type="button" class="ob-btn">확인</button>
         </div>`;
       document.body.appendChild(ov);
       ov.querySelector('.ob-btn').addEventListener('click', () => {
-        localStorage.setItem('rabong_mic_onboarded', '1');
+        // 체크했을 때만 '본 적 있음'으로 각인 → 다음부터 안 뜸 (체크 안 하면 다음에 또 안내)
+        if (ov.querySelector('#obDontShow').checked) localStorage.setItem('rabong_mic_onboarded', '1');
         ov.remove();
         startMobileMicGuide(btn); // 같은 클릭 제스처 흐름에서 키보드 띄움
       });
