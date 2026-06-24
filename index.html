@@ -903,9 +903,8 @@
     .rotate-hint .ri-t2, .rotate-hint-h .ri-t2 { font-size: 15px; color: #9a9a9a; line-height: 1.6; }
     @keyframes rotTilt { 0%,100%{transform:rotate(0);} 50%{transform:rotate(-90deg);} }
 
-    /* 가로 폰(가로 뷰포트): 가로 후기가 아니면 세로 유도. 가로 후기면 사진 꽉 채움 */
+    /* 가로 폰(가로 뷰포트) + 가로 후기: 사진 꽉 채움 (세로 유도 안내는 쓰지 않음) */
     @media (orientation: landscape) and (max-height: 500px) {
-      body:not(.lstrip) .rotate-hint { display: flex; }
       body.lstrip .slide-image.landscape { object-fit: cover; }
     }
     /* 세로 폰(세로 뷰포트) + 가로 후기 보는 중: 가로로 돌리도록 유도 */
@@ -915,11 +914,6 @@
   </style>
 </head>
 <body>
-  <div class="rotate-hint">
-    <div class="ri-icon">📱</div>
-    <div class="ri-t1">세로로 돌려서 봐주세요</div>
-    <div class="ri-t2">라봉후기는 세로 화면에 맞춰져 있어요<br>폰을 세우면 더 편하게 보여요 🎣</div>
-  </div>
   <div class="rotate-hint-h">
     <div class="ri-icon">📱</div>
     <div class="ri-t1">가로로 돌려서 봐주세요</div>
