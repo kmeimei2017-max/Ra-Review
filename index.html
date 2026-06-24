@@ -1562,8 +1562,9 @@
           }))
       };
 
+      const hasVideo = selectedPhotos.some((item) => item.type === 'video');
       localStorage.setItem('rabongTempData', JSON.stringify(tempData));
-      alert('임시저장되었습니다! (영상은 임시저장에 담기지 않아 다시 추가해 주세요)');
+      alert('임시저장되었습니다!' + (hasVideo ? '\n(영상은 임시저장에 담기지 않아 다시 추가해 주세요)' : ''));
     }
 
     function loadTempData() {
@@ -1612,7 +1613,9 @@
             if (item.file) {
               const isVideo = item.type === 'video';
               const uploadFile = isVideo ? item.file : await compressImage(item.file);
-              const fileName = `${Date.now()}_${i}_${uploadFile.name}`;
+              // Storage 키에 한글/특수문자 불가 → 확장자만 보존한 안전한 파일명 사용
+              const ext = (uploadFile.name.match(/\.[^.]+$/) || ['.jpg'])[0].toLowerCase();
+              const fileName = `${Date.now()}_${i}${ext}`;
               const { error: uploadError } = await getSupabase().storage
                 .from('trip-photos')
                 .upload(`${tripIdForUpload}/${fileName}`, uploadFile, isVideo ? { contentType: item.file.type } : undefined);
@@ -1663,7 +1666,9 @@
             if (!item.file) return;
             const isVideo = item.type === 'video';
             const uploadFile = isVideo ? item.file : await compressImage(item.file);
-            const fileName = `${Date.now()}_${i}_${uploadFile.name}`;
+            // Storage 키에 한글/특수문자 불가 → 확장자만 보존한 안전한 파일명 사용
+            const ext = (uploadFile.name.match(/\.[^.]+$/) || ['.jpg'])[0].toLowerCase();
+            const fileName = `${Date.now()}_${i}${ext}`;
             const { error: uploadError } = await getSupabase().storage
               .from('trip-photos')
               .upload(`${tripId}/${fileName}`, uploadFile, isVideo ? { contentType: item.file.type } : undefined);
