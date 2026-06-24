@@ -880,9 +880,37 @@
         max-height: 50%;
       }
     }
+
+    /* 가로 모드(폰)일 때 세로 유도 안내 — PC/태블릿 가로는 높이가 커서 안 뜸 */
+    .rotate-hint { display: none; }
+    @media (orientation: landscape) and (max-height: 500px) {
+      .rotate-hint {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        text-align: center;
+        padding: 24px;
+        background: #0a0a0a;
+        color: #fff;
+      }
+      .rotate-hint .ri-icon { font-size: 64px; animation: rotTilt 2.4s ease-in-out infinite; }
+      .rotate-hint .ri-t1 { font-size: 22px; font-weight: 700; }
+      .rotate-hint .ri-t2 { font-size: 15px; color: #9a9a9a; line-height: 1.6; }
+    }
+    @keyframes rotTilt { 0%,100%{transform:rotate(0);} 50%{transform:rotate(-90deg);} }
   </style>
 </head>
 <body>
+  <div class="rotate-hint">
+    <div class="ri-icon">📱</div>
+    <div class="ri-t1">세로로 돌려서 봐주세요</div>
+    <div class="ri-t2">라봉후기는 세로 화면에 맞춰져 있어요<br>폰을 세우면 더 편하게 보여요 🎣</div>
+  </div>
   <div class="app">
     <!-- 메인화면 -->
     <div id="homePage" class="page home-feed active">
