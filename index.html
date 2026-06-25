@@ -903,6 +903,25 @@
     .rotate-hint .ri-t2, .rotate-hint-h .ri-t2 { font-size: 15px; color: #9a9a9a; line-height: 1.6; }
     @keyframes rotTilt { 0%,100%{transform:rotate(0);} 50%{transform:rotate(-90deg);} }
 
+    /* 메인 상단 카메라 버튼 + 9:16 안내 */
+    .main-cam-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .main-cam-btn .cam-ico { font-size: 20px; }
+    .main-cam-btn:active { transform: scale(0.97); }
+    .main-cam-hint { font-size: 13px; color: var(--text-muted); animation: camHintFade 3s ease-in-out infinite; }
+    @keyframes camHintFade { 0%,100%{ opacity: .5; } 50%{ opacity: 1; } }
+
     /* 가로 폰(가로 뷰포트) + 가로 후기: 사진 꽉 채움 (세로 유도 안내는 쓰지 않음) */
     @media (orientation: landscape) and (max-height: 500px) {
       body.lstrip .slide-image.landscape { object-fit: cover; }
@@ -917,8 +936,12 @@
   <div class="app">
     <!-- 메인화면 -->
     <div id="homePage" class="page home-feed active">
-      <div style="padding: 12px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 8px; justify-content: center;">
-        <button onclick="copyURL()" style="padding: 10px 16px; background: #007AFF; border: none; color: white; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">🔗 URL 복사</button>
+      <div style="padding: 12px; border-bottom: 1px solid var(--border-dark); display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <button class="main-cam-btn" onclick="document.getElementById('cameraInput').click()">
+          <span class="cam-ico">📷</span> 사진·영상 찍기
+        </button>
+        <input type="file" accept="image/*,video/*" capture="environment" id="cameraInput" onchange="handleCameraCapture(event)" style="display:none;">
+        <div class="main-cam-hint">📐 세로(9:16)로 찍으면 후기가 깔끔해요</div>
       </div>
       <div class="feed-container" id="feedContainer"></div>
       <button class="fab" onclick="goToWrite()" aria-label="후기 작성">
@@ -1446,6 +1469,13 @@
           renderPhotoForms();
         }
       });
+    }
+
+    // 메인 카메라: 찍으면 편집페이지로 이동해 방금 찍은 사진/영상을 바로 추가
+    function handleCameraCapture(event) {
+      if (!event.target.files || !event.target.files.length) return;
+      goToWrite();              // 편집페이지로 이동 + 초기화
+      handlePhotoSelect(event); // 찍은 사진/영상을 목록에 추가
     }
 
     // 영상 추가: 1개 제한 + 길이·용량 검사를 통과한 것만 목록에 넣는다
