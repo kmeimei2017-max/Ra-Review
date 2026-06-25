@@ -1518,6 +1518,9 @@
     function handleCameraCapture(event) {
       // 촬영만 — 찍은 사진/영상은 갤러리에 저장됨.
       // 편집페이지 자동 전달은 안 함(컨셉 단순화): 편집은 글쓰기에서 갤러리로 불러온다.
+      if (event.target.files && event.target.files.length) {
+        showToast('📸 갤러리에 저장됐어요');
+      }
       event.target.value = '';
     }
     function openCamera() { document.getElementById('cameraInput').click(); }      // 사진 카메라
