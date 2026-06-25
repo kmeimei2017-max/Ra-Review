@@ -212,20 +212,41 @@
     .detail-drawer {
       position: absolute;
       right: 0;
-      bottom: 24px;
+      top: 50%;
+      margin-top: -177px; /* 높이 절반 → 세로 중앙 고정(스와이프해도 안 흔들림) */
       z-index: 30;
       display: flex;
       flex-direction: column;
       gap: 14px;
-      padding: 16px 16px 16px 22px;
+      padding: 16px 16px 16px 16px;
       background: rgba(20, 20, 20, 0.30);
       -webkit-backdrop-filter: blur(3px);
       backdrop-filter: blur(3px);
       border-radius: 44px 0 0 44px;
-      transform: translateX(calc(100% - 24px)); /* 평소엔 반투명 핸들만 살짝 */
+      transform: translateX(100%); /* 평소엔 카드 본체는 화면 밖, 핸들만 노출 */
       transition: transform 0.32s cubic-bezier(.4, 0, .2, 1);
     }
     .detail-drawer.open { transform: translateX(0); }
+    /* 우측 중앙 + 버튼(닫힘 상태) — 글쓰기 FAB와 동일: 흰 원 + 검은 아이콘 */
+    .drawer-plus {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      margin-top: -35px; /* 70/2 → 세로 중앙 */
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #0a0a0a;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      z-index: 31;
+    }
+    .drawer-plus:active { transform: scale(0.9); }
 
     .dfab {
       width: 70px;
@@ -242,8 +263,9 @@
       flex-shrink: 0;
     }
     .dfab:active { transform: scale(0.9); }
-    /* 친구(카톡) 보기 모드: 드로어 전체 숨김 — 친구는 후기만 본다 */
-    .view-mode .detail-drawer { display: none; }
+    /* 친구(카톡) 보기 모드: 드로어/+ 전체 숨김 — 친구는 후기만 본다 */
+    .view-mode .detail-drawer,
+    .view-mode .drawer-plus { display: none; }
 
     .detail-header {
       position: absolute;
@@ -962,7 +984,8 @@
       .fab-video { bottom: 92px; }
       .cam-bubble { bottom: 30px; right: 92px; }
       .dfab { width: 60px; height: 60px; }
-      .detail-drawer { bottom: 20px; gap: 12px; padding: 14px 14px 14px 20px; }
+      .detail-drawer { margin-top: -152px; gap: 12px; padding: 14px; } /* 모바일 높이 절반 */
+      .drawer-plus { width: 60px; height: 60px; margin-top: -30px; right: 16px; }
 
       .form-input,
       .login-input {
@@ -1055,6 +1078,10 @@
           <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </button>
       </div>
+      <!-- 우측 중앙 + 버튼: 탭하면 +가 사라지고 4개 메뉴가 펼쳐짐 -->
+      <button class="drawer-plus" id="drawerPlus" aria-label="메뉴 열기">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      </button>
     </div>
 
     <!-- 글쓰기 화면 -->
@@ -1205,7 +1232,9 @@
 
     function showPhoto() {
       const dwr = document.getElementById('detailDrawer');
-      if (dwr) dwr.classList.remove('open'); // 후기 열 때 드로어는 접힌 상태로 시작
+      if (dwr) { dwr.classList.remove('open', 'dragging'); dwr.style.transform = ''; } // 후기 열 때 접힘으로 시작
+      const dpl = document.getElementById('drawerPlus');
+      if (dpl) dpl.style.display = ''; // + 버튼 다시 노출
       const trip = trips[currentTripIndex];
       const body = document.getElementById('detailBody');
       const total = trip.photos.length;
@@ -2012,23 +2041,23 @@
       }
     })();
 
-    // 후기페이지 우하단 드로어: 가로 스와이프로 토글 (세로 스와이프=사진 넘김이라 무간섭)
+    // 후기페이지 드로어: + 탭으로 펼침(speed-dial). 가로 스와이프는 다음에 구현.
     (function () {
       const dp = document.getElementById('detailPage');
       const drawer = document.getElementById('detailDrawer');
-      if (!dp || !drawer) return;
-      let x0 = 0, y0 = 0;
-      dp.addEventListener('touchstart', (e) => {
-        const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY;
-      }, { passive: true });
-      dp.addEventListener('touchend', (e) => {
-        const t = e.changedTouches[0];
-        const dx = t.clientX - x0, dy = t.clientY - y0;
-        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 45) {
-          if (dx < 0) drawer.classList.add('open');    // 왼쪽 스와이프 → 펼침
-          else drawer.classList.remove('open');         // 오른쪽 스와이프 → 숨김
-        }
-      }, { passive: true });
+      const plus = document.getElementById('drawerPlus');
+      if (!dp || !drawer || !plus) return;
+
+      function setOpen(open) {
+        drawer.classList.toggle('open', open);
+        plus.style.display = open ? 'none' : ''; // 펼치면 + 숨김, 접으면 + 노출
+      }
+      // + 탭 → 4개 메뉴 펼침
+      plus.addEventListener('click', (e) => { e.stopPropagation(); setOpen(true); });
+      // 펼친 상태에서 카드 바깥(사진) 탭 → 접힘
+      dp.addEventListener('click', (e) => {
+        if (drawer.classList.contains('open') && !drawer.contains(e.target)) setOpen(false);
+      });
     })();
   </script>
 </body>
