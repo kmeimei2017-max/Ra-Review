@@ -159,6 +159,45 @@
       transform: scale(0.9);
     }
 
+    /* 카메라 FAB (우하단) — 글쓰기 FAB와 통일 */
+    .fab-cam {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #0a0a0a;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 50;
+    }
+    .fab-cam:active { transform: scale(0.9); }
+
+    /* 카메라 첫 사용 말풍선 — 9:16 강조 */
+    .cam-bubble {
+      position: fixed;
+      bottom: 108px;
+      right: 24px;
+      max-width: 220px;
+      background: #2563eb;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+      display: none;
+      z-index: 60;
+    }
+    .cam-bubble b { font-size: 19px; font-weight: 900; color: #ffe08a; }
+    .cam-bubble.show { display: block; animation: bubbleIn .3s ease; }
+    @keyframes bubbleIn { from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform: translateY(0);} }
+
     /* 상세화면 */
     .trip-detail {
       flex-direction: column;
@@ -872,6 +911,13 @@
         top: 20px;
         right: 20px;
       }
+      .fab-cam {
+        width: 60px;
+        height: 60px;
+        bottom: 20px;
+        right: 20px;
+      }
+      .cam-bubble { bottom: 90px; right: 16px; }
 
       .form-input,
       .login-input {
@@ -903,24 +949,6 @@
     .rotate-hint .ri-t2, .rotate-hint-h .ri-t2 { font-size: 15px; color: #9a9a9a; line-height: 1.6; }
     @keyframes rotTilt { 0%,100%{transform:rotate(0);} 50%{transform:rotate(-90deg);} }
 
-    /* 메인 상단 카메라 버튼 + 9:16 안내 */
-    .main-cam-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 12px;
-      background: #2563eb;
-      color: #fff;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .main-cam-btn .cam-ico { font-size: 20px; }
-    .main-cam-btn:active { transform: scale(0.97); }
-    .main-cam-hint { font-size: 13px; color: var(--text-muted); animation: camHintFade 3s ease-in-out infinite; }
-    @keyframes camHintFade { 0%,100%{ opacity: .5; } 50%{ opacity: 1; } }
 
     /* 가로 폰(가로 뷰포트) + 가로 후기: 사진 꽉 채움 (세로 유도 안내는 쓰지 않음) */
     @media (orientation: landscape) and (max-height: 500px) {
@@ -936,19 +964,19 @@
   <div class="app">
     <!-- 메인화면 -->
     <div id="homePage" class="page home-feed active">
-      <div style="padding: 12px; border-bottom: 1px solid var(--border-dark); display: flex; flex-direction: column; align-items: center; gap: 6px;">
-        <button class="main-cam-btn" onclick="document.getElementById('cameraInput').click()">
-          <span class="cam-ico">📷</span> 사진·영상 찍기
-        </button>
-        <input type="file" accept="image/*,video/*" capture="environment" id="cameraInput" onchange="handleCameraCapture(event)" style="display:none;">
-        <div class="main-cam-hint">📐 세로(9:16)로 찍으면 후기가 깔끔해요</div>
-      </div>
       <div class="feed-container" id="feedContainer"></div>
       <button class="fab" onclick="goToWrite()" aria-label="후기 작성">
         <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
           <path d="M3 10h11v2H3v-2zm0-2h11V6H3v2zm0 8h7v-2H3v2zm15.01-3.13l.71-.71c.39-.39 1.02-.39 1.41 0l.71.71c.39.39.39 1.02 0 1.41l-.71.71-2.12-2.12zm-.71.71l-5.3 5.3V21h2.12l5.3-5.3-2.12-2.12z"/>
         </svg>
       </button>
+      <button class="fab-cam" onclick="openCamera()" aria-label="사진·영상 찍기">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
+          <path d="M9 2 7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+        </svg>
+      </button>
+      <input type="file" accept="image/*,video/*" capture="environment" id="cameraInput" onchange="handleCameraCapture(event)" style="display:none;">
+      <div class="cam-bubble" id="camBubble">세로 <b>9:16</b>으로 찍으면 깔끔해요</div>
     </div>
 
     <!-- 상세화면 -->
@@ -1477,6 +1505,17 @@
       goToWrite();              // 편집페이지로 이동 + 초기화
       handlePhotoSelect(event); // 찍은 사진/영상을 목록에 추가
     }
+    function openCamera() { document.getElementById('cameraInput').click(); }
+
+    // 카메라 FAB 첫 노출 시 말풍선 안내(9:16 강조) 잠깐 표시 (1회)
+    function showCamBubbleOnce() {
+      if (localStorage.getItem('rabong_cam_hinted')) return;
+      const b = document.getElementById('camBubble');
+      if (!b) return;
+      b.classList.add('show');
+      localStorage.setItem('rabong_cam_hinted', '1');
+      setTimeout(() => b.classList.remove('show'), 4500);
+    }
 
     // 영상 추가: 1개 제한 + 길이·용량 검사를 통과한 것만 목록에 넣는다
     function addVideoFile(file) {
@@ -1899,7 +1938,11 @@
         } else {
           // 후기를 못 찾으면 홈으로 복귀
           document.body.classList.remove('view-mode');
+          setTimeout(showCamBubbleOnce, 800);
         }
+      } else {
+        // 홈으로 진입한 경우: 카메라 사용 안내 말풍선 1회
+        setTimeout(showCamBubbleOnce, 800);
       }
     })();
   </script>
