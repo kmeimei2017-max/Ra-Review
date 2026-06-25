@@ -138,7 +138,7 @@
     /* 글쓰기 버튼 */
     .fab {
       position: fixed;
-      top: 30px;
+      bottom: 190px;
       right: 30px;
       width: 70px;
       height: 70px;
@@ -178,18 +178,16 @@
       z-index: 50;
     }
     .fab-cam:active { transform: scale(0.9); }
-    /* 동영상 FAB — 사진 FAB 위 */
+    /* 동영상 FAB — 사진 FAB 위 (색상은 .fab-cam과 통일: 흰 원 + 검은 아이콘) */
     .fab-video {
       bottom: 110px;
-      background: #0a0a0a;
-      color: #ffffff;
     }
 
-    /* 카메라 첫 사용 말풍선 — 9:16 강조 */
+    /* 카메라 첫 사용 말풍선 — 9:16 강조 (사진 FAB 왼쪽) */
     .cam-bubble {
       position: fixed;
-      bottom: 190px;
-      right: 24px;
+      bottom: 40px;
+      right: 110px;
       max-width: 220px;
       background: #2563eb;
       color: #fff;
@@ -914,7 +912,7 @@
       .fab {
         width: 60px;
         height: 60px;
-        top: 20px;
+        bottom: 164px;
         right: 20px;
       }
       .fab-cam {
@@ -924,7 +922,7 @@
         right: 20px;
       }
       .fab-video { bottom: 92px; }
-      .cam-bubble { bottom: 164px; right: 16px; }
+      .cam-bubble { bottom: 30px; right: 92px; }
 
       .form-input,
       .login-input {
