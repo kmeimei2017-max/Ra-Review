@@ -1519,7 +1519,7 @@
       // 촬영만 — 찍은 사진/영상은 갤러리에 저장됨.
       // 편집페이지 자동 전달은 안 함(컨셉 단순화): 편집은 글쓰기에서 갤러리로 불러온다.
       if (event.target.files && event.target.files.length) {
-        showToast('📸 갤러리에 저장됐어요');
+        showToast('📸 갤러리에 저장됐어요', 3500);
       }
       event.target.value = '';
     }
@@ -1681,11 +1681,11 @@
     }
 
     // 저장 완료 토스트 (1.5초 후 자동 사라짐)
-    function showToast(message = '✓ 저장 완료!') {
+    function showToast(message = '✓ 저장 완료!', duration = 1500) {
       const toast = document.getElementById('saveToast');
       toast.textContent = message;
       toast.classList.add('active');
-      setTimeout(() => toast.classList.remove('active'), 1500);
+      setTimeout(() => toast.classList.remove('active'), duration);
     }
 
     function handleTempSave() {
