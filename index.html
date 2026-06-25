@@ -1516,9 +1516,9 @@
 
     // 메인 카메라: 찍으면 편집페이지로 이동해 방금 찍은 사진/영상을 바로 추가
     function handleCameraCapture(event) {
-      if (!event.target.files || !event.target.files.length) return;
-      goToWrite();              // 편집페이지로 이동 + 초기화
-      handlePhotoSelect(event); // 찍은 사진/영상을 목록에 추가
+      // 촬영만 — 찍은 사진/영상은 갤러리에 저장됨.
+      // 편집페이지 자동 전달은 안 함(컨셉 단순화): 편집은 글쓰기에서 갤러리로 불러온다.
+      event.target.value = '';
     }
     function openCamera() { document.getElementById('cameraInput').click(); }      // 사진 카메라
     function openVideoCam() { document.getElementById('camVideoInput').click(); }   // 동영상 카메라
