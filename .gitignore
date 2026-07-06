@@ -3,6 +3,13 @@
 *백업*.html
 *차-*.html
 제목-*.html
+index_backup_*.html
+
+# 커밋 금지 (CLAUDE.md 작업 규칙)
+.claude/
+KakaoTalk*.jpg
+모션스토리/
+소상공인 AI 지원사업/
 
 # 임시 이미지/스크린샷
 image.png

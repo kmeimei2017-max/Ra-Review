@@ -263,62 +263,6 @@
       flex-shrink: 0;
     }
     .dfab:active { transform: scale(0.9); }
-    /* 친구(카톡) 보기 모드: 드로어/+ 전체 숨김 — 친구는 후기만 본다 */
-    .view-mode .detail-drawer,
-    .view-mode .drawer-plus { display: none; }
-
-    .detail-header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 20;
-      padding: 12px;
-      padding-top: max(12px, env(safe-area-inset-top));
-      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border-bottom: none;
-    }
-
-    .back-btn {
-      background: none;
-      border: none;
-      color: var(--text-light);
-      font-size: 32px;
-      cursor: pointer;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .detail-photo-count {
-      font-size: 18px;
-      color: var(--text-light);
-      font-weight: 600;
-      padding: 8px 12px;
-    }
-
-    .detail-edit-btn {
-      background: none;
-      border: none;
-      color: var(--text-light);
-      font-size: 16px;
-      cursor: pointer;
-      padding: 8px 12px;
-      font-weight: 600;
-    }
-
-    .detail-edit-btn:active {
-      opacity: 0.7;
-    }
-
-    .detail-delete-btn {
-      color: var(--text-light);
-    }
 
     .detail-body {
       position: relative;
@@ -569,11 +513,6 @@
     /* 친구 보기 모드: 헤더가 없으니 번호를 맨 위로 */
     .view-mode .slide-number {
       top: max(16px, env(safe-area-inset-top));
-    }
-
-    /* 친구 보기 모드: 헤더(되돌리기/수정) 숨김 */
-    .view-mode .detail-header {
-      display: none;
     }
 
     /* 친구 보기 모드: 홈 화면 깜빡임 방지 (링크 진입 시 홈 숨김) */
@@ -1057,8 +996,8 @@
       <div class="cam-bubble" id="camBubble">세로 <b>9:16</b>으로 찍으면 깔끔해요</div>
     </div>
 
-    <!-- 상세화면 -->
-    <div id="detailPage" class="page trip-detail">
+    <!-- 미리보기페이지 (본인용) — 우측 + 버튼으로 보내기/수정/삭제/뒤로 드로어 -->
+    <div id="previewPage" class="page trip-detail">
       <div class="rotate-hint-h">
         <div class="ri-icon">📱</div>
         <div class="ri-t1">가로로 돌려서 봐주세요</div>
@@ -1084,6 +1023,16 @@
       <button class="drawer-plus" id="drawerPlus" aria-label="메뉴 열기">
         <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
       </button>
+    </div>
+
+    <!-- 후기페이지 (친구용·카톡) — 읽기 전용, 뒤로가기만 -->
+    <div id="reviewPage" class="page trip-detail">
+      <div class="rotate-hint-h">
+        <div class="ri-icon">📱</div>
+        <div class="ri-t1">가로로 돌려서 봐주세요</div>
+        <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요 🎣</div>
+      </div>
+      <div class="detail-body" id="detailBodyReview"></div>
     </div>
 
     <!-- 글쓰기 화면 -->
@@ -1166,8 +1115,8 @@
     function showPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(pageId).classList.add('active');
-      // 상세보기를 떠나면 가로후기 보기 상태 해제 (작성·홈은 항상 세로 유도)
-      if (pageId !== 'detailPage') document.body.classList.remove('lstrip');
+      // 미리보기/후기페이지를 떠나면 가로후기 보기 상태 해제 (작성·홈은 항상 세로 유도)
+      if (pageId !== 'previewPage' && pageId !== 'reviewPage') document.body.classList.remove('lstrip');
     }
 
 
@@ -1225,20 +1174,24 @@
       document.getElementById('feedContainer').innerHTML = html;
     }
 
-    function viewTrip(tripId) {
+    // mode: 'preview' = 본인(홈에서 탭) / 'review' = 친구(공유 링크로 진입)
+    function viewTrip(tripId, mode = 'preview') {
       currentTripIndex = trips.findIndex(t => t.id === tripId);
       currentPhotoIndex = 0;
-      showPage('detailPage');
-      showPhoto();
+      const pageId = mode === 'review' ? 'reviewPage' : 'previewPage';
+      showPage(pageId);
+      showPhoto(pageId);
     }
 
-    function showPhoto() {
-      const dwr = document.getElementById('detailDrawer');
+    function showPhoto(pageId = 'previewPage') {
+      const isPreview = pageId === 'previewPage';
+      const dwr = isPreview ? document.getElementById('detailDrawer') : null;
       if (dwr) { dwr.classList.remove('open', 'dragging'); dwr.style.transform = ''; } // 후기 열 때 접힘으로 시작
-      const dpl = document.getElementById('drawerPlus');
+      const dpl = isPreview ? document.getElementById('drawerPlus') : null;
       if (dpl) dpl.style.display = ''; // + 버튼 다시 노출
       const trip = trips[currentTripIndex];
-      const body = document.getElementById('detailBody');
+      const bodyId = isPreview ? 'detailBody' : 'detailBodyReview';
+      const body = document.getElementById(bodyId);
       const total = trip.photos.length;
       // 사진·영상을 저장된 순서 그대로 슬라이드로 (영상이면 video, 아니면 img)
       body.innerHTML = trip.photos.map((media, i) => {
@@ -1972,7 +1925,8 @@
     async function shareLink() {
       const trip = trips[currentTripIndex];
 
-      // 앱 후기 상세로 바로 들어가는 링크 (카드의 버튼/본문 클릭 시 이동)
+      // 앱 후기 상세로 바로 들어가는 링크 (카톡의 버튼/본문 클릭 시 이동)
+      // ?view= 로 진입하면 자동으로 읽기 전용 후기페이지가 열린다 (mode 파라미터 불필요)
       const appUrl = 'https://kmeimei2017-max.github.io/Ra-Review/?view=' + trip.id;
       // 밴드/일반 링크 붙여넣기용(OG 미리보기) — 카톡 SDK 미사용 시 폴백
       const ogUrl = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.id + '&v=' + shortHash(trip.thumb_url || trip.id);
@@ -2027,11 +1981,11 @@
       await loadTrips();
       renderFeed();
 
-      // 공유 링크로 들어온 경우: 해당 후기만 읽기 전용으로 표시
+      // 공유 링크로 들어온 경우: 해당 후기만 읽기 전용(후기페이지)으로 표시
       if (viewId) {
         const idx = trips.findIndex(t => t.id === viewId);
         if (idx !== -1) {
-          viewTrip(viewId);
+          viewTrip(viewId, 'review');
         } else {
           // 후기를 못 찾으면 홈으로 복귀
           document.body.classList.remove('view-mode');
@@ -2043,9 +1997,9 @@
       }
     })();
 
-    // 후기페이지 드로어: + 탭으로 펼침(speed-dial). 가로 스와이프는 다음에 구현.
+    // 미리보기페이지 드로어: + 탭으로 펼침(speed-dial). 가로 스와이프는 다음에 구현.
     (function () {
-      const dp = document.getElementById('detailPage');
+      const dp = document.getElementById('previewPage');
       const drawer = document.getElementById('detailDrawer');
       const plus = document.getElementById('drawerPlus');
       if (!dp || !drawer || !plus) return;
