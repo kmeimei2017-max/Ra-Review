@@ -135,30 +135,6 @@
       word-break: break-word;
     }
 
-    /* 글쓰기 버튼 */
-    .fab {
-      position: fixed;
-      bottom: 190px;
-      right: 30px;
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: #ffffff;
-      color: #0a0a0a;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      transition: transform 0.2s ease;
-      z-index: 100;
-    }
-
-    .fab:active {
-      transform: scale(0.9);
-    }
-
     /* 카메라 FAB (우하단) — 글쓰기 FAB와 통일 */
     .fab-cam {
       position: fixed;
@@ -201,33 +177,6 @@
     .cam-bubble b { font-size: 19px; font-weight: 900; color: #ffe08a; }
     .cam-bubble.show { display: block; animation: bubbleIn .3s ease; }
     @keyframes bubbleIn { from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform: translateY(0);} }
-
-    /* 미리보기페이지 최초 1회 스와이프 안내 — 잔잔하게 좌우로 살짝 흔들리다 사라짐 */
-    .swipe-hint {
-      position: absolute;
-      top: 18px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 40;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      background: rgba(0, 0, 0, 0.55);
-      color: #fff;
-      font-size: 13px;
-      border-radius: 20px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.4s ease;
-    }
-    .swipe-hint.show { opacity: 1; }
-    .swipe-hint .sh-arrow { display: inline-block; animation: swipeArrow 2.4s ease-in-out infinite; }
-    @keyframes swipeArrow {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-4px); }
-      75% { transform: translateX(4px); }
-    }
 
     /* 상세화면 */
     .trip-detail {
@@ -592,15 +541,6 @@
       border-bottom: 1px solid var(--border-dark);
     }
 
-    .write-back-btn {
-      background: none;
-      border: none;
-      color: var(--text-light);
-      font-size: 28px;
-      cursor: pointer;
-      padding: 8px;
-    }
-
     /* + / 자동저장 버튼 — 헤더 정중앙 고정(뒤로가기 폭과 무관하게) */
     .write-header-actions {
       position: absolute;
@@ -899,12 +839,6 @@
     }
 
     @media (max-width: 600px) {
-      .fab {
-        width: 60px;
-        height: 60px;
-        bottom: 164px;
-        right: 20px;
-      }
       .fab-cam {
         width: 60px;
         height: 60px;
@@ -965,11 +899,6 @@
     <!-- 메인화면 -->
     <div id="homePage" class="page home-feed active">
       <div class="feed-container" id="feedContainer"></div>
-      <button class="fab" onclick="goToWrite()" aria-label="후기 작성">
-        <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
-          <path d="M3 10h11v2H3v-2zm0-2h11V6H3v2zm0 8h7v-2H3v2zm15.01-3.13l.71-.71c.39-.39 1.02-.39 1.41 0l.71.71c.39.39.39 1.02 0 1.41l-.71.71-2.12-2.12zm-.71.71l-5.3 5.3V21h2.12l5.3-5.3-2.12-2.12z"/>
-        </svg>
-      </button>
       <!-- 동영상 FAB (사진 위) -->
       <button class="fab-cam fab-video" onclick="openVideoCam()" aria-label="동영상 찍기">
         <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
@@ -987,28 +916,21 @@
       <div class="cam-bubble" id="camBubble">세로 <b>9:16</b>으로 찍으면 깔끔해요</div>
     </div>
 
-    <!-- 미리보기페이지 (본인용) — 하단에 보내기/수정/삭제/뒤로가기 4개 버튼 항상 고정 노출 -->
+    <!-- 미리보기페이지 (본인용) — 하단에 보내기/삭제 버튼 고정 노출. 수정/뒤로가기는 좌우 스와이프로 -->
     <div id="previewPage" class="page trip-detail">
       <div class="rotate-hint-h">
         <div class="ri-icon">📱</div>
         <div class="ri-t1">가로로 돌려서 봐주세요</div>
         <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요 🎣</div>
       </div>
-      <div class="swipe-hint" id="swipeHint"><span class="sh-arrow">‹</span> 스와이프로 편집·목록 이동 <span class="sh-arrow">›</span></div>
       <div class="detail-body" id="detailBody"></div>
       <!-- 하단 고정 액션바 -->
       <div class="detail-drawer" id="detailDrawer">
         <button class="dfab" onclick="shareLink()" aria-label="보내기">
           <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
         </button>
-        <button class="dfab dfab-edit" onclick="goToEditTrip()" aria-label="수정">
-          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-        </button>
         <button class="dfab dfab-del" onclick="deleteTrip()" aria-label="삭제">
           <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>
-        <button class="dfab" onclick="goToHome()" aria-label="뒤로가기">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </button>
       </div>
     </div>
@@ -1026,7 +948,6 @@
     <!-- 글쓰기 화면 -->
     <div id="writePage" class="page write-trip">
       <div class="write-header">
-        <button class="write-back-btn" onclick="exitWritePage()">←</button>
         <div class="write-header-actions">
           <button class="header-icon-btn" onclick="document.getElementById('photoInput').click()" aria-label="사진 추가">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
@@ -1170,7 +1091,6 @@
       const pageId = mode === 'review' ? 'reviewPage' : 'previewPage';
       showPage(pageId);
       showPhoto(pageId);
-      if (pageId === 'previewPage') setTimeout(showSwipeHintOnce, 500);
     }
 
     function showPhoto(pageId = 'previewPage') {
@@ -1555,16 +1475,6 @@
       setTimeout(() => b.classList.remove('show'), 4500);
     }
 
-    // 미리보기페이지 첫 진입 시 스와이프 이동 안내 잠깐 표시 (1회)
-    function showSwipeHintOnce() {
-      if (localStorage.getItem('rabong_swipe_hinted')) return;
-      const h = document.getElementById('swipeHint');
-      if (!h) return;
-      h.classList.add('show');
-      localStorage.setItem('rabong_swipe_hinted', '1');
-      setTimeout(() => h.classList.remove('show'), 3000);
-    }
-
     // 영상 추가: 1개 제한 + 길이·용량 검사를 통과한 것만 목록에 넣는다
     function addVideoFile(file) {
       if (selectedPhotos.some(p => p.type === 'video')) {
@@ -1857,6 +1767,20 @@
       goToHome();
     }
 
+    // 편집 → 미리보기 스와이프: 저장된 후기가 있을 때만 이동(신규 글은 아직 갈 곳이 없음)
+    function goToPreviewFromWrite() {
+      if (!editingTripId) return;
+      flushAutosave();
+      viewTrip(editingTripId, 'preview');
+    }
+
+    // 메인 → 미리보기 스와이프: 목록 최상단(가장 최근) 후기를 염
+    function goToLatestPreview() {
+      if (!trips.length) return;
+      const latest = [...trips].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      viewTrip(latest.id, 'preview');
+    }
+
     // 좌우 스와이프로도 페이지 이동 — 버튼과 동일한 기존 함수를 그대로 호출(시각적 캐러셀 없이 제스처만 추가)
     function initSwipeNav(pageEl, { onSwipeLeft, onSwipeRight } = {}) {
       if (!pageEl) return;
@@ -1970,7 +1894,12 @@
       onSwipeRight: () => goToHome(),
     });
     initSwipeNav(document.getElementById('writePage'), {
-      onSwipeRight: () => exitWritePage(),
+      onSwipeLeft: () => exitWritePage(),
+      onSwipeRight: () => goToPreviewFromWrite(),
+    });
+    initSwipeNav(document.getElementById('homePage'), {
+      onSwipeLeft: () => goToLatestPreview(),
+      onSwipeRight: () => goToWrite(),
     });
 
     // 초기화
