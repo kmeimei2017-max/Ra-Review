@@ -208,45 +208,16 @@
       flex-direction: column;
     }
 
-    /* 우하단 스와이프 드로어 (왼쪽 스와이프=펼침 / 오른쪽=숨김) */
+    /* 우측하단 고정 액션바 — 메인페이지 FAB(.fab-cam)와 같은 위치에 세로로 쌓아 항상 노출 */
     .detail-drawer {
-      position: absolute;
-      right: 0;
-      top: 50%;
-      margin-top: -177px; /* 높이 절반 → 세로 중앙 고정(스와이프해도 안 흔들림) */
+      position: fixed;
+      right: 30px;
+      bottom: 30px;
       z-index: 30;
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      padding: 16px 16px 16px 16px;
-      background: rgba(20, 20, 20, 0.30);
-      -webkit-backdrop-filter: blur(3px);
-      backdrop-filter: blur(3px);
-      border-radius: 44px 0 0 44px;
-      transform: translateX(100%); /* 평소엔 카드 본체는 화면 밖, 핸들만 노출 */
-      transition: transform 0.32s cubic-bezier(.4, 0, .2, 1);
+      gap: 16px;
     }
-    .detail-drawer.open { transform: translateX(0); }
-    /* 우측 중앙 + 버튼(닫힘 상태) — 글쓰기 FAB와 동일: 흰 원 + 검은 아이콘 */
-    .drawer-plus {
-      position: absolute;
-      right: 20px;
-      top: 50%;
-      margin-top: 193px;
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: #ffffff;
-      color: #0a0a0a;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      cursor: pointer;
-      z-index: 31;
-    }
-    .drawer-plus:active { transform: scale(0.9); }
 
     .dfab {
       width: 70px;
@@ -925,8 +896,7 @@
       .fab-video { bottom: 92px; }
       .cam-bubble { bottom: 30px; right: 92px; }
       .dfab { width: 60px; height: 60px; }
-      .detail-drawer { margin-top: -152px; gap: 12px; padding: 14px; } /* 모바일 높이 절반 */
-      .drawer-plus { width: 60px; height: 60px; margin-top: 206px; right: 16px; }
+      .detail-drawer { right: 20px; bottom: 20px; gap: 12px; }
 
       .form-input,
       .login-input {
@@ -996,7 +966,7 @@
       <div class="cam-bubble" id="camBubble">세로 <b>9:16</b>으로 찍으면 깔끔해요</div>
     </div>
 
-    <!-- 미리보기페이지 (본인용) — 우측 + 버튼으로 보내기/수정/삭제/뒤로 드로어 -->
+    <!-- 미리보기페이지 (본인용) — 하단에 보내기/수정/삭제/뒤로가기 4개 버튼 항상 고정 노출 -->
     <div id="previewPage" class="page trip-detail">
       <div class="rotate-hint-h">
         <div class="ri-icon">📱</div>
@@ -1004,7 +974,7 @@
         <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요 🎣</div>
       </div>
       <div class="detail-body" id="detailBody"></div>
-      <!-- 우하단 스와이프 드로어: 왼쪽 스와이프로 펼침 / 오른쪽 스와이프로 숨김 -->
+      <!-- 하단 고정 액션바 -->
       <div class="detail-drawer" id="detailDrawer">
         <button class="dfab" onclick="shareLink()" aria-label="보내기">
           <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
@@ -1019,10 +989,6 @@
           <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         </button>
       </div>
-      <!-- 우측 중앙 + 버튼: 탭하면 +가 사라지고 4개 메뉴가 펼쳐짐 -->
-      <button class="drawer-plus" id="drawerPlus" aria-label="메뉴 열기">
-        <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-      </button>
     </div>
 
     <!-- 후기페이지 (친구용·카톡) — 읽기 전용, 뒤로가기만 -->
@@ -1185,10 +1151,6 @@
 
     function showPhoto(pageId = 'previewPage') {
       const isPreview = pageId === 'previewPage';
-      const dwr = isPreview ? document.getElementById('detailDrawer') : null;
-      if (dwr) { dwr.classList.remove('open', 'dragging'); dwr.style.transform = ''; } // 후기 열 때 접힘으로 시작
-      const dpl = isPreview ? document.getElementById('drawerPlus') : null;
-      if (dpl) dpl.style.display = ''; // + 버튼 다시 노출
       const trip = trips[currentTripIndex];
       const bodyId = isPreview ? 'detailBody' : 'detailBodyReview';
       const body = document.getElementById(bodyId);
@@ -1997,24 +1959,6 @@
       }
     })();
 
-    // 미리보기페이지 드로어: + 탭으로 펼침(speed-dial). 가로 스와이프는 다음에 구현.
-    (function () {
-      const dp = document.getElementById('previewPage');
-      const drawer = document.getElementById('detailDrawer');
-      const plus = document.getElementById('drawerPlus');
-      if (!dp || !drawer || !plus) return;
-
-      function setOpen(open) {
-        drawer.classList.toggle('open', open);
-        plus.style.display = open ? 'none' : ''; // 펼치면 + 숨김, 접으면 + 노출
-      }
-      // + 탭 → 4개 메뉴 펼침
-      plus.addEventListener('click', (e) => { e.stopPropagation(); setOpen(true); });
-      // 펼친 상태에서 카드 바깥(사진) 탭 → 접힘
-      dp.addEventListener('click', (e) => {
-        if (drawer.classList.contains('open') && !drawer.contains(e.target)) setOpen(false);
-      });
-    })();
   </script>
 </body>
 </html>
