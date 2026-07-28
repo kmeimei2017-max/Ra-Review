@@ -566,12 +566,6 @@
       gap: 12px;
     }
 
-    .write-header-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
     .write-back-btn {
       background: none;
       border: none;
@@ -581,30 +575,10 @@
       padding: 8px;
     }
 
-    .write-temp-save-btn {
-      background: var(--bg-card);
-      color: var(--text-light);
-      border: 1px solid var(--border-dark);
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .write-temp-save-btn:active {
-      background: var(--border-dark);
-    }
-
-    .write-save-btn {
-      background: var(--text-light);
-      color: var(--bg-dark);
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 18px;
-      cursor: pointer;
-      font-weight: 600;
+    /* 자동저장 상태 표시 — 잔잔하게, 조작을 막지 않음 */
+    .write-save-status {
+      font-size: 14px;
+      color: var(--text-muted);
     }
 
     .write-content {
@@ -1005,11 +979,8 @@
     <!-- 글쓰기 화면 -->
     <div id="writePage" class="page write-trip">
       <div class="write-header">
-        <div class="write-header-left">
-          <button class="write-back-btn" onclick="goToHome()">←</button>
-          <button class="write-temp-save-btn" onclick="handleTempSave()">임시저장</button>
-        </div>
-        <button class="write-save-btn" onclick="handleSaveTrip()">저장</button>
+        <button class="write-back-btn" onclick="exitWritePage()">←</button>
+        <div class="write-save-status" id="saveStatus"></div>
       </div>
       <div class="write-content">
         <div class="form-section">
@@ -1024,7 +995,7 @@
         <div class="form-section">
           <label class="form-label">제목</label>
           <div class="mic-wrap">
-            <textarea id="captionInput" class="form-input" placeholder="예: 동해호 광어 대박! (2026.06.17 후포항)" rows="3"></textarea>
+            <textarea id="captionInput" class="form-input" placeholder="예: 동해호 광어 대박! (2026.06.17 후포항)" rows="3" onchange="scheduleAutosave()"></textarea>
             <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력"><svg class="mic-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg></button>
           </div>
         </div>
@@ -1366,8 +1337,8 @@
       document.getElementById('captionInput').value = '';
       document.getElementById('photoPreviewGrid').innerHTML = '';
       document.getElementById('photoFormsContainer').innerHTML = '';
+      resetAutosaveState('');
       showPage('writePage');
-      loadTempData();
       initPhotoSortable();
     }
 
@@ -1405,6 +1376,7 @@
       document.getElementById('photoInput').value = '';
       document.getElementById('photoPreviewGrid').innerHTML = '';
       document.getElementById('photoFormsContainer').innerHTML = '';
+      resetAutosaveState('저장됨');
 
       renderPhotoPreview();
       renderPhotoForms();
@@ -1504,6 +1476,7 @@
           selectedPhotos.push({ file, preview: URL.createObjectURL(file), content: '', type: 'image' });
           renderPhotoPreview();
           renderPhotoForms();
+          scheduleAutosave();
         }
       });
     }
@@ -1554,6 +1527,7 @@
         selectedPhotos.push({ file, preview, content: '', type: 'video', duration: isFinite(dur) ? dur : null });
         renderPhotoPreview();
         renderPhotoForms();
+        scheduleAutosave();
       };
       probe.onerror = () => {
         URL.revokeObjectURL(preview);
@@ -1605,6 +1579,7 @@
       selectedPhotos.splice(index, 1);
       renderPhotoPreview();
       renderPhotoForms();
+      scheduleAutosave();
     }
 
     // 사진 미리보기 그리드 드래그 정렬 (끼워넣기 방식)
@@ -1629,6 +1604,7 @@
           selectedPhotos.splice(evt.newIndex, 0, moved);
           renderPhotoPreview();
           renderPhotoForms();
+          scheduleAutosave();
         }
       });
     }
@@ -1657,7 +1633,7 @@
                 class="form-input"
                 placeholder="${ph}"
                 rows="3"
-                onchange="selectedPhotos[${index}].content = this.value"
+                onchange="selectedPhotos[${index}].content = this.value; scheduleAutosave()"
               >${item.content || ''}</textarea>
               <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력">${MIC_SVG}</button>
             </div>
@@ -1685,168 +1661,132 @@
       setTimeout(() => toast.classList.remove('active'), duration);
     }
 
-    function handleTempSave() {
+    // 후기 저장 (신규 생성/기존 수정 공통) — editingTripId 유무로 갈리고,
+    // 한 번 생성되면 editingTripId가 이어져서 다음 자동저장부터는 계속 업데이트만 함.
+    async function persistTrip() {
       const caption = document.getElementById('captionInput').value.trim();
-      // 영상은 임시저장에 담을 수 없어(파일 직렬화 불가) 사진 글만 보존
-      const tempData = {
-        caption,
-        photos: selectedPhotos
-          .filter((item) => item.type !== 'video')
-          .map((photo) => ({
-            preview: photo.preview,
-            content: photo.content || '',
-            type: 'image'
-          }))
-      };
+      if (!caption && selectedPhotos.length === 0) return false;
 
-      const hasVideo = selectedPhotos.some((item) => item.type === 'video');
-      localStorage.setItem('rabongTempData', JSON.stringify(tempData));
-      alert('임시저장되었습니다!' + (hasVideo ? '\n(영상은 임시저장에 담기지 않아 다시 추가해 주세요)' : ''));
-    }
-
-    function loadTempData() {
-      const tempData = localStorage.getItem('rabongTempData');
-      if (tempData) {
-        const data = JSON.parse(tempData);
-        document.getElementById('captionInput').value = data.caption || '';
-
-        // 임시저장된 사진 복원 (각 사진이 자기 글을 보유)
-        selectedPhotos = data.photos.map(photo => ({
-          preview: photo.preview,
-          file: null,
-          content: photo.content || '',
-          type: photo.type || 'image'
-        }));
-
-        renderPhotoPreview();
-        renderPhotoForms();
-      }
-    }
-
-    async function handleSaveTrip() {
-      const caption = document.getElementById('captionInput').value.trim();
-
-      if (!caption && selectedPhotos.length === 0) {
-        alert('제목을 입력하거나 사진·영상을 추가해주세요.');
-        return;
+      if (editingTripId) {
+        const { error: updateError } = await getSupabase()
+          .from('trips')
+          .update({ caption })
+          .eq('id', editingTripId);
+        if (updateError) throw updateError;
+      } else {
+        const { data: tripData, error: tripError } = await getSupabase()
+          .from('trips')
+          .insert({ caption })
+          .select();
+        if (tripError) throw tripError;
+        editingTripId = tripData[0].id;
       }
 
-      try {
-        document.querySelector('.write-save-btn').disabled = true;
-        showLoading();
+      const tripId = editingTripId;
 
-        if (editingTripId) {
-          // 기존 항목 수정
-          const { error: updateError } = await getSupabase()
-            .from('trips')
-            .update({ caption })
-            .eq('id', editingTripId);
+      // 새 파일은 업로드 후 file/id를 갱신해 다음 자동저장에서 중복 업로드되지 않게 함
+      await Promise.all(selectedPhotos.map(async (item, i) => {
+        if (item.file) {
+          const isVideo = item.type === 'video';
+          const uploadFile = isVideo ? item.file : await compressImage(item.file);
+          // Storage 키에 한글/특수문자 불가 → 확장자만 보존한 안전한 파일명 사용
+          const ext = (uploadFile.name.match(/\.[^.]+$/) || ['.jpg'])[0].toLowerCase();
+          const fileName = `${Date.now()}_${i}${ext}`;
+          const { error: uploadError } = await getSupabase().storage
+            .from('trip-photos')
+            .upload(`${tripId}/${fileName}`, uploadFile, isVideo ? { contentType: item.file.type } : undefined);
+          if (uploadError) throw uploadError;
 
-          if (updateError) throw updateError;
+          const { data: { publicUrl } } = getSupabase().storage
+            .from('trip-photos')
+            .getPublicUrl(`${tripId}/${fileName}`);
 
-          // 새로운 파일만 업로드 (압축 + 병렬 처리)
-          const tripIdForUpload = editingTripId;
-          await Promise.all(selectedPhotos.map(async (item, i) => {
-            if (item.file) {
-              const isVideo = item.type === 'video';
-              const uploadFile = isVideo ? item.file : await compressImage(item.file);
-              // Storage 키에 한글/특수문자 불가 → 확장자만 보존한 안전한 파일명 사용
-              const ext = (uploadFile.name.match(/\.[^.]+$/) || ['.jpg'])[0].toLowerCase();
-              const fileName = `${Date.now()}_${i}${ext}`;
-              const { error: uploadError } = await getSupabase().storage
-                .from('trip-photos')
-                .upload(`${tripIdForUpload}/${fileName}`, uploadFile, isVideo ? { contentType: item.file.type } : undefined);
+          const { data: insertedPhoto, error: insertError } = await getSupabase()
+            .from('photos')
+            .insert({
+              trip_id: tripId,
+              url: publicUrl,
+              content: item.content || '',
+              order_index: i,
+              type: item.type || 'image'
+            })
+            .select()
+            .single();
+          if (insertError) throw insertError;
 
-              if (uploadError) throw uploadError;
-
-              const { data: { publicUrl } } = getSupabase().storage
-                .from('trip-photos')
-                .getPublicUrl(`${tripIdForUpload}/${fileName}`);
-
-              const { error: insertError } = await getSupabase()
-                .from('photos')
-                .insert({
-                  trip_id: tripIdForUpload,
-                  url: publicUrl,
-                  content: item.content || '',
-                  order_index: i,
-                  type: item.type || 'image'
-                });
-
-              if (insertError) throw insertError;
-            } else if (item.id) {
-              // 기존 사진/영상 순서 업데이트
-              await getSupabase()
-                .from('photos')
-                .update({ content: item.content || '', order_index: i })
-                .eq('id', item.id);
-            }
-          }));
-
-          // 카톡 대표 이미지 = 첫 사진 자동 지정
-          await setCoverFromFirstPhoto(tripIdForUpload);
-
-          editingTripId = null;
-        } else {
-          // 새로운 항목 추가
-          const { data: tripData, error: tripError } = await getSupabase()
-            .from('trips')
-            .insert({ caption })
-            .select();
-
-          if (tripError) throw tripError;
-
-          const tripId = tripData[0].id;
-
-          // 파일 업로드 (압축 + 병렬 처리)
-          await Promise.all(selectedPhotos.map(async (item, i) => {
-            if (!item.file) return;
-            const isVideo = item.type === 'video';
-            const uploadFile = isVideo ? item.file : await compressImage(item.file);
-            // Storage 키에 한글/특수문자 불가 → 확장자만 보존한 안전한 파일명 사용
-            const ext = (uploadFile.name.match(/\.[^.]+$/) || ['.jpg'])[0].toLowerCase();
-            const fileName = `${Date.now()}_${i}${ext}`;
-            const { error: uploadError } = await getSupabase().storage
-              .from('trip-photos')
-              .upload(`${tripId}/${fileName}`, uploadFile, isVideo ? { contentType: item.file.type } : undefined);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = getSupabase().storage
-              .from('trip-photos')
-              .getPublicUrl(`${tripId}/${fileName}`);
-
-            const { error: insertError } = await getSupabase()
-              .from('photos')
-              .insert({
-                trip_id: tripId,
-                url: publicUrl,
-                content: item.content || '',
-                order_index: i,
-                type: item.type || 'image'
-              });
-
-            if (insertError) throw insertError;
-          }));
-
-          // 카톡 대표 이미지 = 첫 사진 자동 지정
-          await setCoverFromFirstPhoto(tripId);
+          item.file = null;
+          item.id = insertedPhoto.id;
+          item.preview = publicUrl;
+        } else if (item.id) {
+          // 이미 업로드된 사진/영상은 순서·글만 갱신
+          await getSupabase()
+            .from('photos')
+            .update({ content: item.content || '', order_index: i })
+            .eq('id', item.id);
         }
+      }));
 
-        localStorage.removeItem('rabongTempData');
-        document.getElementById('captionInput').value = '';
-        await loadTrips();
-        renderFeed();
-        hideLoading();
-        showPage('homePage');
-        showToast('✓ 저장 완료!'); // 홈 화면에서 완료 알림
-        document.querySelector('.write-save-btn').disabled = false;
+      // 카톡 대표 이미지 = 첫 사진 자동 지정
+      await setCoverFromFirstPhoto(tripId);
+      return true;
+    }
+
+    // ===== 자동저장 =====
+    // 조작 2초 후 조용히 저장. 화면을 덮는 로딩 없이 상단 작은 문구로만 표시.
+    let autosaveTimer = null;
+    let autosaveInFlight = false;
+    let autosavePending = false;
+
+    function setSaveStatus(text) {
+      const el = document.getElementById('saveStatus');
+      if (el) el.textContent = text;
+    }
+
+    function resetAutosaveState(initialStatus) {
+      clearTimeout(autosaveTimer);
+      autosaveInFlight = false;
+      autosavePending = false;
+      setSaveStatus(initialStatus);
+    }
+
+    function scheduleAutosave() {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(runAutosave, 2000);
+    }
+
+    async function runAutosave() {
+      if (autosaveInFlight) { autosavePending = true; return; }
+      autosaveInFlight = true;
+      setSaveStatus('저장 중…');
+      try {
+        const saved = await persistTrip();
+        if (saved) {
+          await loadTrips();
+          renderFeed();
+          setSaveStatus('저장됨');
+        }
       } catch (error) {
-        console.error('저장 실패:', error);
-        hideLoading();
-        alert('저장에 실패했습니다: ' + error.message);
-        document.querySelector('.write-save-btn').disabled = false;
+        console.error('자동저장 실패:', error);
+        setSaveStatus('저장 실패 · 다시 시도 중…');
+        autosavePending = true;
+      } finally {
+        autosaveInFlight = false;
+        if (autosavePending) {
+          autosavePending = false;
+          scheduleAutosave();
+        }
       }
+    }
+
+    // 대기 중인 저장을 즉시 실행(네비게이션을 막지 않도록 완료를 기다리지 않음)
+    function flushAutosave() {
+      clearTimeout(autosaveTimer);
+      runAutosave();
+    }
+
+    function exitWritePage() {
+      flushAutosave();
+      goToHome();
     }
 
     function copyURL() {
