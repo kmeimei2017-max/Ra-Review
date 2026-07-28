@@ -202,6 +202,33 @@
     .cam-bubble.show { display: block; animation: bubbleIn .3s ease; }
     @keyframes bubbleIn { from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform: translateY(0);} }
 
+    /* 미리보기페이지 최초 1회 스와이프 안내 — 잔잔하게 좌우로 살짝 흔들리다 사라짐 */
+    .swipe-hint {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      font-size: 13px;
+      border-radius: 20px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .swipe-hint.show { opacity: 1; }
+    .swipe-hint .sh-arrow { display: inline-block; animation: swipeArrow 2.4s ease-in-out infinite; }
+    @keyframes swipeArrow {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+
     /* 상세화면 */
     .trip-detail {
       position: relative;
@@ -967,6 +994,7 @@
         <div class="ri-t1">가로로 돌려서 봐주세요</div>
         <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요 🎣</div>
       </div>
+      <div class="swipe-hint" id="swipeHint"><span class="sh-arrow">‹</span> 스와이프로 편집·목록 이동 <span class="sh-arrow">›</span></div>
       <div class="detail-body" id="detailBody"></div>
       <!-- 하단 고정 액션바 -->
       <div class="detail-drawer" id="detailDrawer">
@@ -1142,6 +1170,7 @@
       const pageId = mode === 'review' ? 'reviewPage' : 'previewPage';
       showPage(pageId);
       showPhoto(pageId);
+      if (pageId === 'previewPage') setTimeout(showSwipeHintOnce, 500);
     }
 
     function showPhoto(pageId = 'previewPage') {
@@ -1526,6 +1555,16 @@
       setTimeout(() => b.classList.remove('show'), 4500);
     }
 
+    // 미리보기페이지 첫 진입 시 스와이프 이동 안내 잠깐 표시 (1회)
+    function showSwipeHintOnce() {
+      if (localStorage.getItem('rabong_swipe_hinted')) return;
+      const h = document.getElementById('swipeHint');
+      if (!h) return;
+      h.classList.add('show');
+      localStorage.setItem('rabong_swipe_hinted', '1');
+      setTimeout(() => h.classList.remove('show'), 3000);
+    }
+
     // 영상 추가: 1개 제한 + 길이·용량 검사를 통과한 것만 목록에 넣는다
     function addVideoFile(file) {
       if (selectedPhotos.some(p => p.type === 'video')) {
@@ -1818,6 +1857,26 @@
       goToHome();
     }
 
+    // 좌우 스와이프로도 페이지 이동 — 버튼과 동일한 기존 함수를 그대로 호출(시각적 캐러셀 없이 제스처만 추가)
+    function initSwipeNav(pageEl, { onSwipeLeft, onSwipeRight } = {}) {
+      if (!pageEl) return;
+      let startX = 0, startY = 0, startT = 0, tracking = false;
+      pageEl.addEventListener('touchstart', e => {
+        const t = e.touches[0];
+        startX = t.clientX; startY = t.clientY; startT = Date.now(); tracking = true;
+      }, { passive: true });
+      pageEl.addEventListener('touchend', e => {
+        if (!tracking) return;
+        tracking = false;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX, dy = t.clientY - startY;
+        const dt = Date.now() - startT;
+        if (dt > 300) return; // 빠른 플릭만 인정 — 사진 그리드의 눌러서-끄는 정렬 동작과 구분
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return; // 최소 60px + 수평 우세
+        (dx < 0 ? onSwipeLeft : onSwipeRight)?.();
+      }, { passive: true });
+    }
+
     function copyURL() {
       navigator.clipboard.writeText(location.href).then(() => {
         alert('링크가 복사되었습니다!');
@@ -1904,6 +1963,15 @@
         prompt('아래 링크를 길게 눌러 복사하세요:', ogUrl);
       }
     }
+
+    // 미리보기 ↔ 편집/메인 좌우 스와이프 (버튼과 동일 동작)
+    initSwipeNav(document.getElementById('previewPage'), {
+      onSwipeLeft: () => goToEditTrip(),
+      onSwipeRight: () => goToHome(),
+    });
+    initSwipeNav(document.getElementById('writePage'), {
+      onSwipeRight: () => exitWritePage(),
+    });
 
     // 초기화
     (async () => {
