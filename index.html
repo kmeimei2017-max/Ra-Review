@@ -558,12 +558,11 @@
     }
 
     .write-header {
+      position: relative;
       display: flex;
-      justify-content: space-between;
       align-items: center;
       padding: 16px;
       border-bottom: 1px solid var(--border-dark);
-      gap: 12px;
     }
 
     .write-back-btn {
@@ -575,11 +574,38 @@
       padding: 8px;
     }
 
-    /* 자동저장 상태 표시 — 잔잔하게, 조작을 막지 않음 */
-    .write-save-status {
-      font-size: 14px;
-      color: var(--text-muted);
+    /* + / 자동저장 버튼 — 헤더 정중앙 고정(뒤로가기 폭과 무관하게) */
+    .write-header-actions {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
+
+    .header-icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: none;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .header-icon-btn:active { transform: scale(0.9); }
+    .header-icon-btn svg { width: 22px; height: 22px; }
+
+    /* 자동저장 상태 표시 — 잔잔하게, 조작을 막지 않음. 탭하면 즉시 저장 강제(flushAutosave) */
+    .autosave-btn.idle .as-icon { opacity: 0.35; }
+    .autosave-btn.saved .as-icon { opacity: 0.85; }
+    .autosave-btn.saving .as-icon { animation: as-spin 0.9s linear infinite; }
+    .autosave-btn.error .as-icon { color: #ff6b6b; }
+    @keyframes as-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     .write-content {
       flex: 1;
@@ -682,18 +708,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-
-    .photo-upload-btn {
-      width: 100%;
-      padding: 20px;
-      border: 2px solid var(--border-dark);
-      border-radius: 8px;
-      background: var(--bg-card);
-      color: var(--text-light);
-      font-size: var(--font-size);
-      cursor: pointer;
-      text-align: center;
     }
 
     .photo-preview-grid {
@@ -980,13 +994,17 @@
     <div id="writePage" class="page write-trip">
       <div class="write-header">
         <button class="write-back-btn" onclick="exitWritePage()">←</button>
-        <div class="write-save-status" id="saveStatus"></div>
+        <div class="write-header-actions">
+          <button class="header-icon-btn" onclick="document.getElementById('photoInput').click()" aria-label="사진 추가">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+          </button>
+          <button class="header-icon-btn autosave-btn idle" id="autosaveBtn" onclick="flushAutosave()" aria-label="자동저장 · 탭하면 즉시 저장">
+            <svg class="as-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          </button>
+        </div>
       </div>
       <div class="write-content">
         <div class="form-section">
-          <button class="photo-upload-btn" onclick="document.getElementById('photoInput').click()">
-            ＋ 사진 추가하기
-          </button>
           <input id="photoInput" type="file" multiple accept="image/*,video/*" class="photo-input" onchange="handlePhotoSelect(event)">
           <div class="photo-upload-sub">사진과 함께 <b>손맛 영상(1개·15초)</b>도 추가할 수 있어요. 순서는 드래그로 바꿔요.</div>
           <div class="photo-preview-grid" id="photoPreviewGrid"></div>
@@ -1337,7 +1355,7 @@
       document.getElementById('captionInput').value = '';
       document.getElementById('photoPreviewGrid').innerHTML = '';
       document.getElementById('photoFormsContainer').innerHTML = '';
-      resetAutosaveState('');
+      resetAutosaveState('idle');
       showPage('writePage');
       initPhotoSortable();
     }
@@ -1376,7 +1394,7 @@
       document.getElementById('photoInput').value = '';
       document.getElementById('photoPreviewGrid').innerHTML = '';
       document.getElementById('photoFormsContainer').innerHTML = '';
-      resetAutosaveState('저장됨');
+      resetAutosaveState('saved');
 
       renderPhotoPreview();
       renderPhotoForms();
@@ -1560,7 +1578,7 @@
               <span class="pv-play">▶</span>
               ${sec ? `<span class="pv-dur">🎬 ${sec}</span>` : ''}
               <span class="photo-num-badge">${index + 1}</span>
-              <button class="photo-remove-btn" onclick="removePhoto(${index})">✕</button>
+              <button class="photo-remove-btn" onclick="removePhoto(${index})">−</button>
             </div>
           `;
         }
@@ -1568,7 +1586,7 @@
           <div class="photo-preview-item">
             <img src="${item.preview}" alt="선택된 사진 ${index + 1}" loading="lazy" decoding="async" draggable="false">
             <span class="photo-num-badge">${index + 1}</span>
-            <button class="photo-remove-btn" onclick="removePhoto(${index})">✕</button>
+            <button class="photo-remove-btn" onclick="removePhoto(${index})">−</button>
           </div>
         `;
       }).join('');
@@ -1596,7 +1614,7 @@
         delay: 150,             // 터치 시 150ms 눌러야 드래그 시작 → 짧은 스와이프는 스크롤로 통과
         delayOnTouchOnly: true, // 마우스는 그대로 즉시 드래그, 터치에서만 delay 적용
         touchStartThreshold: 5, // delay 대기 중 5px 넘게 움직이면 스크롤로 간주해 드래그 취소
-        filter: '.photo-remove-btn', // ✕ 버튼은 드래그 안 됨
+        filter: '.photo-remove-btn', // − 버튼은 드래그 안 됨
         onEnd: (evt) => {
           if (evt.oldIndex === evt.newIndex) return;
           // 끌어온 사진을 새 위치에 끼워넣고 나머지는 밀어냄
@@ -1732,21 +1750,27 @@
     }
 
     // ===== 자동저장 =====
-    // 조작 2초 후 조용히 저장. 화면을 덮는 로딩 없이 상단 작은 문구로만 표시.
+    // 조작 2초 후 조용히 저장. 화면을 덮는 로딩 없이 헤더의 작은 아이콘 상태로만 표시.
+    // 상태: idle(아직 저장할 내용 없음) · saving(저장 중, 회전) · saved(저장됨) · error(실패)
     let autosaveTimer = null;
     let autosaveInFlight = false;
     let autosavePending = false;
 
-    function setSaveStatus(text) {
-      const el = document.getElementById('saveStatus');
-      if (el) el.textContent = text;
+    const AUTOSAVE_LABELS = { idle: '자동저장 대기', saving: '저장 중…', saved: '저장됨', error: '저장 실패 · 탭하면 재시도' };
+
+    function setSaveStatus(state) {
+      const btn = document.getElementById('autosaveBtn');
+      if (!btn) return;
+      btn.classList.remove('idle', 'saving', 'saved', 'error');
+      btn.classList.add(state);
+      btn.setAttribute('aria-label', `${AUTOSAVE_LABELS[state] || ''} · 탭하면 즉시 저장`);
     }
 
-    function resetAutosaveState(initialStatus) {
+    function resetAutosaveState(initialState) {
       clearTimeout(autosaveTimer);
       autosaveInFlight = false;
       autosavePending = false;
-      setSaveStatus(initialStatus);
+      setSaveStatus(initialState);
     }
 
     function scheduleAutosave() {
@@ -1757,17 +1781,17 @@
     async function runAutosave() {
       if (autosaveInFlight) { autosavePending = true; return; }
       autosaveInFlight = true;
-      setSaveStatus('저장 중…');
+      setSaveStatus('saving');
       try {
         const saved = await persistTrip();
         if (saved) {
           await loadTrips();
           renderFeed();
-          setSaveStatus('저장됨');
+          setSaveStatus('saved');
         }
       } catch (error) {
         console.error('자동저장 실패:', error);
-        setSaveStatus('저장 실패 · 다시 시도 중…');
+        setSaveStatus('error');
         autosavePending = true;
       } finally {
         autosaveInFlight = false;
