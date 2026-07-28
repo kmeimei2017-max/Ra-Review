@@ -135,6 +135,30 @@
       word-break: break-word;
     }
 
+    /* 글쓰기 버튼 */
+    .fab {
+      position: fixed;
+      bottom: 190px;
+      right: 30px;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #0a0a0a;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease;
+      z-index: 100;
+    }
+
+    .fab:active {
+      transform: scale(0.9);
+    }
+
     /* 카메라 FAB (우하단) — 글쓰기 FAB와 통일 */
     .fab-cam {
       position: fixed;
@@ -835,6 +859,12 @@
     }
 
     @media (max-width: 600px) {
+      .fab {
+        width: 60px;
+        height: 60px;
+        bottom: 164px;
+        right: 20px;
+      }
       .fab-cam {
         width: 60px;
         height: 60px;
@@ -895,6 +925,11 @@
     <!-- 메인화면 -->
     <div id="homePage" class="page home-feed active">
       <div class="feed-container" id="feedContainer"></div>
+      <button class="fab" onclick="goToWrite()" aria-label="후기 작성">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
+          <path d="M3 10h11v2H3v-2zm0-2h11V6H3v2zm0 8h7v-2H3v2zm15.01-3.13l.71-.71c.39-.39 1.02-.39 1.41 0l.71.71c.39.39.39 1.02 0 1.41l-.71.71-2.12-2.12zm-.71.71l-5.3 5.3V21h2.12l5.3-5.3-2.12-2.12z"/>
+        </svg>
+      </button>
       <!-- 동영상 FAB (사진 위) -->
       <button class="fab-cam fab-video" onclick="openVideoCam()" aria-label="동영상 찍기">
         <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
@@ -1777,6 +1812,14 @@
       viewTrip(latest.id, 'preview');
     }
 
+    // 메인 → 편집 스와이프: 새 글이 아니라 최근(가장 최신) 후기를 바로 수정 — 미리보기→편집과 의미를 통일
+    function goToEditLatestTrip() {
+      if (!trips.length) return;
+      const latest = [...trips].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      currentTripIndex = trips.findIndex(t => t.id === latest.id);
+      goToEditTrip();
+    }
+
     // 좌우 스와이프로도 페이지 이동 — 버튼과 동일한 기존 함수를 그대로 호출(시각적 캐러셀 없이 제스처만 추가)
     function initSwipeNav(pageEl, { onSwipeLeft, onSwipeRight } = {}) {
       if (!pageEl) return;
@@ -1895,7 +1938,7 @@
     });
     initSwipeNav(document.getElementById('homePage'), {
       onSwipeLeft: () => goToLatestPreview(),
-      onSwipeRight: () => goToWrite(),
+      onSwipeRight: () => goToEditLatestTrip(),
     });
 
     // 초기화
