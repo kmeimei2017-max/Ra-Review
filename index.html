@@ -781,7 +781,7 @@
       overflow: hidden;
       background: var(--bg-card);
       cursor: grab;
-      touch-action: none;              /* 썸네일 터치는 드래그로 (스크롤 가로채기 방지) */
+      touch-action: pan-y;              /* 세로 스와이프는 스크롤 허용, 드래그는 아래 delay 옵션이 판단 */
       -webkit-touch-callout: none;     /* iOS 길게누르기 메뉴 차단 */
       -webkit-user-select: none;
       user-select: none;
@@ -1618,6 +1618,9 @@
         animation: 150,
         forceFallback: true,   // OS 기본 동작 대신 자체 드래그 → 콜아웃 메뉴 방지
         fallbackTolerance: 3,  // 살짝만 움직여도 드래그 시작
+        delay: 150,             // 터치 시 150ms 눌러야 드래그 시작 → 짧은 스와이프는 스크롤로 통과
+        delayOnTouchOnly: true, // 마우스는 그대로 즉시 드래그, 터치에서만 delay 적용
+        touchStartThreshold: 5, // delay 대기 중 5px 넘게 움직이면 스크롤로 간주해 드래그 취소
         filter: '.photo-remove-btn', // ✕ 버튼은 드래그 안 됨
         onEnd: (evt) => {
           if (evt.oldIndex === evt.newIndex) return;
