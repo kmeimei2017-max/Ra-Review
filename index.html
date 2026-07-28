@@ -582,23 +582,26 @@
       transform: translate(-50%, -50%);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 16px;
     }
 
+    /* 메인/미리보기 페이지 FAB(.fab-cam, .dfab)과 동일한 크기·스타일 */
     .header-icon-btn {
-      width: 40px;
-      height: 40px;
+      width: 70px;
+      height: 70px;
       border-radius: 50%;
+      background: #ffffff;
+      color: #0a0a0a;
       border: none;
-      background: none;
-      color: var(--text-light);
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       cursor: pointer;
+      flex-shrink: 0;
     }
     .header-icon-btn:active { transform: scale(0.9); }
-    .header-icon-btn svg { width: 22px; height: 22px; }
+    .header-icon-btn svg { width: 30px; height: 30px; }
 
     /* 자동저장 상태 표시 — 잔잔하게, 조작을 막지 않음. 탭하면 즉시 저장 강제(flushAutosave) */
     .autosave-btn.idle .as-icon { opacity: 0.35; }
@@ -885,6 +888,8 @@
       .cam-bubble { bottom: 30px; right: 92px; }
       .dfab { width: 60px; height: 60px; }
       .detail-drawer { right: 20px; bottom: 20px; gap: 12px; }
+      .header-icon-btn { width: 60px; height: 60px; }
+      .write-header-actions { gap: 12px; }
       .slide-content { padding-right: 92px; }
 
       .form-input,
