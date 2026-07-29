@@ -7,6 +7,8 @@ index_backup_*.html
 
 # 커밋 금지 (CLAUDE.md 작업 규칙)
 .claude/
+.mcp.json
+.playwright-mcp/
 KakaoTalk*.jpg
 모션스토리/
 소상공인 AI 지원사업/
