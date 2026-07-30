@@ -766,9 +766,11 @@
       margin: 12px 0;
     }
 
+    /* 사진/영상 안내 — 크기·굵기는 .form-label("제목")과 동일하게 맞춤 */
     .photo-upload-sub {
       margin-top: 8px;
-      font-size: 13px;
+      font-size: var(--font-size);
+      font-weight: 600;
       line-height: 1.5;
       color: var(--text-muted);
     }
@@ -1060,7 +1062,10 @@
       <div class="write-content">
         <div class="form-section">
           <input id="photoInput" type="file" multiple accept="image/*,video/*" class="photo-input" onchange="handlePhotoSelect(event)">
-          <div class="photo-upload-sub">사진과 함께 <b>손맛 영상(1개·15초)</b>도 추가할 수 있어요. 순서는 드래그로 바꿔요.</div>
+          <div class="photo-upload-sub">
+            <div>• 사진과 함께 동영상 1개 (15초 50MB)</div>
+            <div>• 드래그하면 사진 순서 바꿔요</div>
+          </div>
           <div class="photo-preview-grid" id="photoPreviewGrid"></div>
         </div>
 
