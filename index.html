@@ -1252,10 +1252,20 @@
       renderProfileButton();
 
       sb.auth.onAuthStateChange(async (_event, session) => {
+        const prevId = currentUser ? currentUser.id : null;
         currentUser = session ? session.user : null;
+        const nextId = currentUser ? currentUser.id : null;
+
         await loadMyProfile();
         renderProfileButton();
         refreshOwnershipUI();
+
+        // 피드가 "내 후기만"이라 로그인/로그아웃하면 내용이 통째로 바뀐다.
+        // 구독 직후 오는 초기 이벤트로 중복 로딩하지 않도록, 사용자가 실제로 바뀐 경우에만.
+        if (prevId !== nextId) {
+          await loadTrips();
+          renderFeed();
+        }
       });
 
       // OAuth 복귀 후 주소창에 남는 토큰 해시 정리 (SDK가 이미 지우지만 혹시 남으면)
@@ -1294,23 +1304,50 @@
 
 
 
+    // DB 행 → 앱에서 쓰는 모양 (사진은 저장된 순서대로 정렬)
+    function shapeTrip(trip) {
+      return {
+        ...trip,
+        createdAt: new Date(trip.created_at),
+        photos: (trip.photos || []).sort((a, b) => a.order_index - b.order_index)
+      };
+    }
+
+    // 메인 피드는 "내 후기만" 보여준다. 로그인 전에는 기본 후기(is_template)를 보여준다.
+    // ⚠️ 이건 화면용 필터일 뿐 권한이 아니다. 후기 열람은 RLS에서 여전히 전체 공개이고,
+    //    카톡 링크(?view=)로 들어온 남의 후기는 loadTripById()가 따로 가져온다.
     async function loadTrips() {
+      try {
+        let q = getSupabase().from('trips').select('*, photos(*)');
+        q = currentUser
+          ? q.eq('author_id', currentUser.id)
+          : q.eq('is_template', true);
+
+        const { data, error } = await q.order('created_at', { ascending: false });
+        if (error) throw error;
+
+        trips = (data || []).map(shapeTrip);
+      } catch (e) {
+        console.log('데이터를 불러올 수 없습니다.', e);
+        trips = [];
+      }
+    }
+
+    // 카톡 공유 링크(?view=) 전용 — 피드 필터와 무관하게 후기 하나만 가져온다.
+    // ★ 이게 없으면 친구가 받은 링크가 "내 피드에 없는 후기"라서 열리지 않는다.
+    //   공유가 이 앱의 존재 이유이므로 이 경로를 없애면 안 된다.
+    async function loadTripById(id) {
       try {
         const { data, error } = await getSupabase()
           .from('trips')
           .select('*, photos(*)')
-          .order('created_at', { ascending: false });
-
+          .eq('id', id)
+          .maybeSingle();
         if (error) throw error;
-
-        trips = (data || []).map(trip => ({
-          ...trip,
-          createdAt: new Date(trip.created_at),
-          photos: (trip.photos || []).sort((a, b) => a.order_index - b.order_index)
-        }));
+        return data ? shapeTrip(data) : null;
       } catch (e) {
-        console.log('데이터를 불러올 수 없습니다.', e);
-        trips = [];
+        console.log('공유된 후기를 불러올 수 없습니다.', e);
+        return null;
       }
     }
 
@@ -1318,7 +1355,11 @@
       console.log('renderFeed 실행 - trips 데이터:', trips);
       console.log('localStorage rabongTrips:', localStorage.getItem('rabongTrips'));
 
-      const sorted = [...trips].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // _external = 카톡 링크로 열어본 남의 후기. 화면에 필요해서 배열에만 담아둔 것이라
+      // 내 피드 목록에는 넣지 않는다.
+      const sorted = [...trips]
+        .filter(t => !t._external)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       const html = sorted.map(trip => {
         // 카드 대표 이미지: 대표사진 우선, 없으면 첫 '사진'(영상 URL은 카드에 못 쓰므로 제외)
         const firstPhoto = (trip.photos || []).find(p => (p.type || 'image') === 'image');
@@ -1631,6 +1672,11 @@
         //    본인·관리자조차 파일을 못 지우고 사진이 영구히 고아로 남는다.
 
         // 1) Storage에서 해당 후기 폴더의 사진 파일 전체 삭제
+        // 🚨 "폴더 기준"을 절대 "URL 기준"으로 바꾸지 말 것.
+        //    가입 시 지급되는 기본 후기(supabase/migrations/005)는 사진 파일을 복사하지 않고
+        //    원본 URL을 그대로 재사용한다. 폴더 기준이라 복사본을 지워도 원본 파일은 안전하지만,
+        //    URL 기준으로 바꾸면 한 명이 자기 기본 후기를 지우는 순간
+        //    회원 전원의 기본 후기 사진이 한꺼번에 깨진다.
         const { data: files } = await getSupabase().storage
           .from('trip-photos')
           .list(trip.id);
@@ -2194,15 +2240,27 @@
         document.body.classList.add('view-mode'); // 홈 즉시 숨김
       }
 
-      // 로그인 상태 확인 — 피드 렌더를 막지 않도록 기다리지 않음
-      initAuth();
+      // 로그인 상태를 먼저 확정한다 — 피드 내용이 "누가 보느냐"에 따라 달라지기 때문.
+      // 기다리지 않으면 로그인한 사람에게 기본 후기가 잠깐 보였다가 내 후기로 바뀐다.
+      await initAuth();
 
       await loadTrips();
       renderFeed();
 
       // 공유 링크로 들어온 경우: 해당 후기만 읽기 전용(후기페이지)으로 표시
       if (viewId) {
-        const idx = trips.findIndex(t => t.id === viewId);
+        let idx = trips.findIndex(t => t.id === viewId);
+        if (idx === -1) {
+          // 남의 후기 링크 — 내 피드에는 없으므로 단건으로 따로 가져온다.
+          // ★ push(끝에 추가)여야 한다. 홈 좌우 스와이프가 trips[0]을 "내 최신 후기"로
+          //   보기 때문에, 앞에 넣으면 남의 후기가 그 자리를 차지한다.
+          const shared = await loadTripById(viewId);
+          if (shared) {
+            shared._external = true;
+            trips.push(shared);
+            idx = trips.length - 1;
+          }
+        }
         if (idx !== -1) {
           viewTrip(viewId, 'review');
         } else {
