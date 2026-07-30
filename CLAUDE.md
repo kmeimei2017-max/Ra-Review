@@ -15,7 +15,7 @@ AI 코딩 도구가 이 프로젝트에서 작업할 때 항상 따를 규칙. (
 | 용어 | 코드 id | 설명 |
 |---|---|---|
 | **메인페이지** | `homePage` | 후기 목록(홈) |
-| **미리보기페이지** | `previewPage` | 본인용 — 우측 `+` 버튼으로 **보내기·수정·삭제** 드로어 |
+| **미리보기페이지** | `previewPage` | 앱 안에서 후기를 보는 화면 — 하단 드로어에 **보내기**(항상) + **삭제**(내 후기·관리자만). 수정은 좌스와이프 |
 | **편집(작성)페이지** | `writePage` | 후기 쓰는 곳 |
 | **후기페이지 (카톡)** | `reviewPage` | 친구가 카톡 링크로 여는 **읽기 전용** 화면 |
 
@@ -30,6 +30,9 @@ AI 코딩 도구가 이 프로젝트에서 작업할 때 항상 따를 규칙. (
 ## 기술 스택 / 메모
 - **단일 `index.html`** (HTML/CSS/JS 한 파일).
 - DB·저장: **Supabase** (Postgres + Storage 버킷 `trip-photos`). ⚠️ 한글/특수문자 불가 → 업로드 파일명은 **확장자만**(`${Date.now()}_${i}${ext}`).
+- 🚨 **`trips`·`photos`의 익명(anon) SELECT는 절대 막지 말 것.** 카톡/밴드 OG 미리보기 워커(`cloudflare-worker/og.js`)가 anon 키로 REST를 직접 조회하고 service_role 경로가 없다. 좁히면 카톡 미리보기 + 비로그인 열람이 동시에 죽는다.
+- ⚠️ RLS 거부는 **에러가 아니라 200 + 0행**으로 돌아온다. 삭제/수정 성공 판정은 `error`만 보면 안 되고 실제 반영된 행 수를 확인해야 한다.
+- ⚠️ 후기 삭제 순서 **Storage → photos → trips** 고정. Storage 정책이 `trips` 행으로 소유자를 판정하므로 순서를 바꾸면 사진이 고아로 남는다.
 - 카톡 동적 미리보기(OG): **Cloudflare Worker** (Supabase는 text/plain 강제라 불가).
 - 카톡 공유: **카카오링크(Kakao JS SDK) 원터치**. 밴드/일반링크용 OG는 Worker 유지.
 - 배포: **GitHub Pages** (repo `kmeimei2017-max/Ra-Review`).

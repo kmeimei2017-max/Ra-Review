@@ -1116,9 +1116,17 @@
     }
 
     // ===== 카카오 로그인 (Supabase Auth) =====
-    // 열람은 로그인 없이 그대로 유지("0 friction"). 로그인은 작성자 확인용이며,
-    // 실제 권한 잠금(내 후기만 수정·삭제)은 다음 단계에서 RLS로 처리한다.
+    // 열람은 로그인 없이 그대로 유지("0 friction"). 후기를 쓰려면 로그인이 필요하고,
+    // 실제 권한 잠금(내 후기만 수정·삭제)은 DB의 RLS 정책이 담당한다.
+    // 아래 헬퍼는 "UI를 미리 정리해주는 용도"일 뿐, 보안의 근거는 어디까지나 RLS다.
     let currentUser = null;
+    let myProfile = null;   // { is_admin, is_blocked } — 로그인할 때 1회 로드
+
+    function isAdmin()        { return !!(myProfile && myProfile.is_admin); }
+    function isBlocked()      { return !!(myProfile && myProfile.is_blocked); }
+    function isMine(trip)     { return !!(currentUser && trip && trip.author_id === currentUser.id); }
+    function canEditTrip(t)   { return isMine(t) && !isBlocked(); }        // 관리자도 남의 글은 수정 못 함
+    function canDeleteTrip(t) { return !!t && (isMine(t) || isAdmin()); }  // 관리자는 삭제만 가능
 
     const PROFILE_ICON_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
 
@@ -1174,6 +1182,58 @@
       }
     }
 
+    // 내 권한(관리자/차단)을 읽어둔다. 행이 없으면 일반 회원으로 취급.
+    async function loadMyProfile() {
+      myProfile = null;
+      if (!currentUser) return;
+      try {
+        const { data } = await getSupabase()
+          .from('profiles')
+          .select('is_admin,is_blocked')
+          .eq('id', currentUser.id)
+          .maybeSingle();
+        myProfile = data || null;
+      } catch (e) {
+        console.log('프로필을 불러올 수 없습니다.', e);
+      }
+    }
+
+    // 로그아웃이 일어났을 때, 열려 있는 미리보기페이지의 삭제 버튼을 즉시 정리
+    function refreshOwnershipUI() {
+      const pv = document.getElementById('previewPage');
+      if (pv && pv.classList.contains('active')) updateDetailDrawer();
+    }
+
+    // ===== 작성 게이트 =====
+    // 카카오 로그인은 페이지를 떠났다 돌아오고(redirectTo가 search를 버림) 항상 홈으로 복귀하므로,
+    // "글을 쓰려다 로그인했다"는 의도를 잠깐 저장해 두고 복귀 후 작성 화면을 자동으로 연다.
+    // TTL을 두는 이유: 로그인을 중간에 취소한 뒤 며칠 뒤 방문했을 때 엉뚱하게 열리는 것을 막는다.
+    const WRITE_INTENT_KEY = 'rabong_write_intent';
+    const WRITE_INTENT_TTL = 5 * 60 * 1000;
+
+    // 명시적으로 버튼을 탭한 경우에만 호출 — 로그인 유도까지 한다.
+    // (스와이프 같은 제스처는 조용히 무시해야 하므로 이 함수를 쓰지 않는다)
+    function requireWriteAccess() {
+      if (!currentUser) {
+        localStorage.setItem(WRITE_INTENT_KEY, String(Date.now()));
+        kakaoLogin();
+        return false;
+      }
+      if (isBlocked()) {
+        alert('지금은 후기를 쓸 수 없어요.\n관리자에게 문의해 주세요.');
+        return false;
+      }
+      return true;
+    }
+
+    function consumeWriteIntent() {
+      const t = Number(localStorage.getItem(WRITE_INTENT_KEY) || 0);
+      localStorage.removeItem(WRITE_INTENT_KEY);
+      if (!t || Date.now() - t > WRITE_INTENT_TTL) return;
+      if (!currentUser || isBlocked()) return;
+      goToWrite();
+    }
+
     // 시작 시 세션을 한 번 확인하고, 이후 상태 변화는 콜백으로 버튼만 다시 그림
     async function initAuth() {
       const sb = getSupabase();
@@ -1185,17 +1245,23 @@
         console.log('세션 확인 실패', e);
         currentUser = null;
       }
+      await loadMyProfile();
       renderProfileButton();
 
-      sb.auth.onAuthStateChange((_event, session) => {
+      sb.auth.onAuthStateChange(async (_event, session) => {
         currentUser = session ? session.user : null;
+        await loadMyProfile();
         renderProfileButton();
+        refreshOwnershipUI();
       });
 
       // OAuth 복귀 후 주소창에 남는 토큰 해시 정리 (SDK가 이미 지우지만 혹시 남으면)
       if (location.hash.includes('access_token') || location.hash.includes('error=')) {
         history.replaceState(null, '', location.origin + location.pathname + location.search);
       }
+
+      // 글을 쓰려다 로그인한 경우, 복귀 후 작성 화면을 자동으로 연다
+      consumeWriteIntent();
     }
 
     // 시트 바깥을 누르면 닫힘
@@ -1278,13 +1344,22 @@
       document.getElementById('feedContainer').innerHTML = html;
     }
 
-    // mode: 'preview' = 본인(홈에서 탭) / 'review' = 친구(공유 링크로 진입)
+    // mode: 'preview' = 앱 안에서 보기(홈에서 탭) / 'review' = 친구(공유 링크로 진입)
     function viewTrip(tripId, mode = 'preview') {
       currentTripIndex = trips.findIndex(t => t.id === tripId);
       currentPhotoIndex = 0;
       const pageId = mode === 'review' ? 'reviewPage' : 'previewPage';
       showPage(pageId);
       showPhoto(pageId);
+      if (pageId === 'previewPage') updateDetailDrawer();
+    }
+
+    // 삭제 버튼은 내 후기(또는 관리자)일 때만 보인다.
+    // 보내기(공유)는 남의 후기라도 그대로 둔다 — 공유 링크는 이미 완전 공개이고,
+    // 단톡방으로 퍼뜨리는 건 이 앱이 하려는 일 그 자체다.
+    function updateDetailDrawer() {
+      const delBtn = document.querySelector('#detailDrawer .dfab-del');
+      if (delBtn) delBtn.style.display = canDeleteTrip(trips[currentTripIndex]) ? '' : 'none';
     }
 
     function showPhoto(pageId = 'previewPage') {
@@ -1497,6 +1572,7 @@
     }
 
     function goToWrite() {
+      if (!requireWriteAccess()) return;
       selectedPhotos = [];
       editingTripId = null;
       document.getElementById('photoInput').value = '';
@@ -1508,25 +1584,11 @@
       initPhotoSortable();
     }
 
-    async function clearAllData() {
-      if (confirm('모든 저장된 후기를 삭제하시겠습니까?')) {
-        try {
-          const { error } = await getSupabase().from('trips').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-          if (error) throw error;
-
-          localStorage.removeItem('rabongTrips');
-          trips = [];
-          renderFeed();
-          alert('모든 데이터가 삭제되었습니다!');
-        } catch (error) {
-          console.error('삭제 실패:', error);
-          alert('삭제에 실패했습니다.');
-        }
-      }
-    }
-
+    // 내 후기가 아니면 조용히 무시한다. 편집 진입은 스와이프 제스처와 공용 경로라
+    // 여기서 로그인을 유도하면 실수로 스친 스와이프가 화면을 날려버린다.
     function goToEditTrip() {
       const trip = trips[currentTripIndex];
+      if (!canEditTrip(trip)) return;
       editingTripId = trip.id;
 
       selectedPhotos = trip.photos.map(media => ({
@@ -1555,10 +1617,15 @@
     async function deleteTrip() {
       const trip = trips[currentTripIndex];
       if (!trip) return;
+      if (!canDeleteTrip(trip)) return;
       if (!confirm('이 후기를 삭제할까요?\n삭제하면 되돌릴 수 없습니다.')) return;
 
       try {
         showLoading('삭제 중...');
+
+        // ⚠️ 삭제 순서(Storage → photos → trips)를 바꾸지 말 것.
+        //    Storage 정책이 trips 행을 보고 소유자를 판정하므로, trips를 먼저 지우면
+        //    본인·관리자조차 파일을 못 지우고 사진이 영구히 고아로 남는다.
 
         // 1) Storage에서 해당 후기 폴더의 사진 파일 전체 삭제
         const { data: files } = await getSupabase().storage
@@ -1573,8 +1640,12 @@
         await getSupabase().from('photos').delete().eq('trip_id', trip.id);
 
         // 3) trip 행 삭제
-        const { error } = await getSupabase().from('trips').delete().eq('id', trip.id);
+        //    RLS로 거부된 삭제는 에러가 아니라 "0행 삭제"로 돌아온다.
+        //    error만 보면 아무것도 안 지웠는데 "삭제되었습니다"가 뜨므로 실제 행 수를 확인한다.
+        const { data: deleted, error } = await getSupabase()
+          .from('trips').delete().eq('id', trip.id).select('id');
         if (error) throw error;
+        if (!deleted || !deleted.length) throw new Error('삭제 권한이 없어요');
 
         await loadTrips();
         renderFeed();
@@ -1830,6 +1901,9 @@
     // 후기 저장 (신규 생성/기존 수정 공통) — editingTripId 유무로 갈리고,
     // 한 번 생성되면 editingTripId가 이어져서 다음 자동저장부터는 계속 업데이트만 함.
     async function persistTrip() {
+      // 권한이 없으면 아예 시도하지 않는다 — 안 그러면 자동저장이 2초마다 무한 재시도한다.
+      if (!currentUser || isBlocked()) return false;
+
       const caption = document.getElementById('captionInput').value.trim();
       if (!caption && selectedPhotos.length === 0) return false;
 
@@ -1842,7 +1916,7 @@
       } else {
         const { data: tripData, error: tripError } = await getSupabase()
           .from('trips')
-          .insert({ caption })
+          .insert({ caption, author_id: currentUser.id })
           .select();
         if (tripError) throw tripError;
         editingTripId = tripData[0].id;
@@ -1936,6 +2010,9 @@
           await loadTrips();
           renderFeed();
           setSaveStatus('saved');
+        } else {
+          // 저장할 내용이 없거나 권한이 없는 경우 — 'saving' 회전 상태로 굳지 않게 되돌린다
+          setSaveStatus('idle');
         }
       } catch (error) {
         console.error('자동저장 실패:', error);
@@ -1975,11 +2052,13 @@
       viewTrip(latest.id, 'preview');
     }
 
-    // 메인 → 편집 스와이프: 새 글이 아니라 최근(가장 최신) 후기를 바로 수정 — 미리보기→편집과 의미를 통일
+    // 메인 → 편집 스와이프: 새 글이 아니라 최근 후기를 바로 수정 — 미리보기→편집과 의미를 통일.
+    // 남의 후기는 수정할 수 없으니 "내 후기 중 최신"으로 한정한다.
     function goToEditLatestTrip() {
-      if (!trips.length) return;
-      const latest = [...trips].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-      currentTripIndex = trips.findIndex(t => t.id === latest.id);
+      if (!currentUser || isBlocked()) return;
+      const mine = [...trips].filter(isMine).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      if (!mine.length) return;
+      currentTripIndex = trips.findIndex(t => t.id === mine[0].id);
       goToEditTrip();
     }
 
