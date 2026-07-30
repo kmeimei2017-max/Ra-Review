@@ -134,7 +134,7 @@
     /* 글쓰기 버튼 */
     .fab {
       position: fixed;
-      bottom: 190px;
+      bottom: 270px;
       right: 30px;
       width: 70px;
       height: 70px;
@@ -158,7 +158,7 @@
     /* 카메라 FAB (우하단) — 글쓰기 FAB와 통일 */
     .fab-cam {
       position: fixed;
-      bottom: 30px;
+      bottom: 110px;
       right: 30px;
       width: 70px;
       height: 70px;
@@ -176,13 +176,13 @@
     .fab-cam:active { transform: scale(0.9); }
     /* 동영상 FAB — 사진 FAB 위 (색상은 .fab-cam과 통일: 흰 원 + 검은 아이콘) */
     .fab-video {
-      bottom: 110px;
+      bottom: 190px;
     }
 
     /* 카메라 첫 사용 말풍선 — 9:16 강조 (사진 FAB 왼쪽) */
     .cam-bubble {
       position: fixed;
-      bottom: 40px;
+      bottom: 120px;
       right: 110px;
       max-width: 220px;
       background: #2563eb;
@@ -198,36 +198,36 @@
     .cam-bubble.show { display: block; animation: bubbleIn .3s ease; }
     @keyframes bubbleIn { from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform: translateY(0);} }
 
-    /* 로그인 프로필 버튼 (메인 좌상단) — 로그인 전 회색 사람 아이콘 / 로그인 후 카카오 프로필 사진 */
+    /* 로그인 프로필 버튼 (우하단 FAB 스택 맨 아래) — 로그인 전 사람 아이콘 / 로그인 후 카카오 프로필 사진 */
     .profile-fab {
       position: fixed;
-      top: max(16px, env(safe-area-inset-top));
-      left: 20px;
-      width: 44px;
-      height: 44px;
+      bottom: 30px;
+      right: 30px;
+      width: 70px;
+      height: 70px;
       padding: 0;
       border: none;
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.55);
-      color: #cfcfcf;
+      background: #ffffff;
+      color: #0a0a0a;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       transition: transform 0.2s ease;
-      z-index: 60;
+      z-index: 50;
     }
-    .profile-fab:active { transform: scale(0.92); }
+    .profile-fab:active { transform: scale(0.9); }
     .profile-fab img { width: 100%; height: 100%; object-fit: cover; }
-    .profile-fab svg { width: 24px; height: 24px; }
+    .profile-fab svg { width: 30px; height: 30px; }
 
-    /* 프로필 시트 — 닉네임 + 로그아웃 (잔잔하게 떠오름) */
+    /* 프로필 시트 — 닉네임 + 로그아웃 (버튼 위로 잔잔하게 떠오름) */
     .profile-sheet {
       position: fixed;
-      top: calc(max(16px, env(safe-area-inset-top)) + 52px);
-      left: 20px;
+      bottom: 110px;
+      right: 30px;
       min-width: 160px;
       max-width: 220px;
       padding: 12px;
@@ -237,7 +237,7 @@
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
       visibility: hidden;
       opacity: 0;
-      transform: translateY(-6px);
+      transform: translateY(6px);
       transition: opacity 0.28s ease, transform 0.28s ease, visibility 0.28s;
       z-index: 61;
     }
@@ -921,17 +921,19 @@
       .fab {
         width: 60px;
         height: 60px;
-        bottom: 164px;
+        bottom: 236px;
         right: 20px;
       }
       .fab-cam {
         width: 60px;
         height: 60px;
-        bottom: 20px;
+        bottom: 92px;
         right: 20px;
       }
-      .fab-video { bottom: 92px; }
-      .cam-bubble { bottom: 30px; right: 92px; }
+      .fab-video { bottom: 164px; }
+      .profile-fab { width: 60px; height: 60px; bottom: 20px; right: 20px; }
+      .profile-sheet { bottom: 92px; right: 20px; }
+      .cam-bubble { bottom: 102px; right: 92px; }
       .dfab { width: 60px; height: 60px; }
       .detail-drawer { right: 20px; bottom: 20px; gap: 12px; }
       .header-icon-btn { width: 60px; height: 60px; }
@@ -983,14 +985,6 @@
   <div class="app">
     <!-- 메인화면 -->
     <div id="homePage" class="page home-feed active">
-      <!-- 로그인 프로필 (좌상단) — 로그인 전엔 회색 아이콘, 누르면 카카오 로그인 -->
-      <button class="profile-fab" id="profileFab" onclick="onProfileTap()" aria-label="카카오로 로그인">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-      </button>
-      <div class="profile-sheet" id="profileSheet">
-        <div class="ps-name" id="psName"></div>
-        <button class="ps-logout" onclick="kakaoLogout()">로그아웃</button>
-      </div>
       <div class="feed-container" id="feedContainer"></div>
       <button class="fab" onclick="goToWrite()" aria-label="후기 작성">
         <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
@@ -1011,6 +1005,14 @@
         </svg>
       </button>
       <input type="file" accept="image/*" capture="environment" id="cameraInput" onchange="handleCameraCapture(event)" style="display:none;">
+      <!-- 로그인 프로필 (스택 맨 아래) — 로그인 전엔 사람 아이콘, 누르면 카카오 로그인 -->
+      <button class="profile-fab" id="profileFab" onclick="onProfileTap()" aria-label="카카오로 로그인">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </button>
+      <div class="profile-sheet" id="profileSheet">
+        <div class="ps-name" id="psName"></div>
+        <button class="ps-logout" onclick="kakaoLogout()">로그아웃</button>
+      </div>
       <div class="cam-bubble" id="camBubble">세로 <b>9:16</b>으로 찍으면 깔끔해요</div>
     </div>
 
