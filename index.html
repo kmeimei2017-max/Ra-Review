@@ -1289,6 +1289,7 @@
     let trips = [];
 
     let selectedPhotos = []; // 사진·영상 통합 목록. 각 항목 { file?, preview, content, type:'image'|'video', duration? }
+    let removedPhotoIds = []; // 편집 중 지운 기존 사진의 id. 저장 시 실제로 삭제한다.
     const VIDEO_MAX_SEC = 15;          // 영상 최대 길이(초)
     const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 영상 최대 용량(50MB)
     let currentTripIndex = 0;
@@ -1618,6 +1619,7 @@
     function goToWrite() {
       if (!requireWriteAccess()) return;
       selectedPhotos = [];
+      removedPhotoIds = [];
       editingTripId = null;
       document.getElementById('photoInput').value = '';
       document.getElementById('captionInput').value = '';
@@ -1634,6 +1636,7 @@
       const trip = trips[currentTripIndex];
       if (!canEditTrip(trip)) return;
       editingTripId = trip.id;
+      removedPhotoIds = [];
 
       selectedPhotos = trip.photos.map(media => ({
         id: media.id,
@@ -1862,6 +1865,8 @@
     }
 
     function removePhoto(index) {
+      const removed = selectedPhotos[index];
+      if (removed && removed.id) removedPhotoIds.push(removed.id);
       selectedPhotos.splice(index, 1);
       renderPhotoPreview();
       renderPhotoForms();
@@ -2014,6 +2019,14 @@
             .eq('id', item.id);
         }
       }));
+
+      // 화면에서 지운 사진을 실제로 삭제 — Storage 파일은 절대 건드리지 않는다.
+      // (기본 후기 복사본들이 같은 Storage 파일 URL을 공유하고 있어서 파일까지 지우면
+      //  다른 회원의 기본 후기 사진까지 깨진다)
+      if (removedPhotoIds.length) {
+        await getSupabase().from('photos').delete().in('id', removedPhotoIds);
+        removedPhotoIds = [];
+      }
 
       // 카톡 대표 이미지 = 첫 사진 자동 지정
       await setCoverFromFirstPhoto(tripId);
