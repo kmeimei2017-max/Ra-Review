@@ -550,6 +550,36 @@
       display: none !important;
     }
 
+    /* 후기 맨 뒤 마지막 카드 — 사진이 아니라 코드가 그리는 슬라이드 (카톡으로 열었을 때만) */
+    .exit-slide {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 32px;
+    }
+    .exit-slide-text {
+      color: #ffffff;
+      font-size: var(--font-size);
+      line-height: 1.7;
+      white-space: pre-line;
+      margin-bottom: 36px;
+    }
+    .exit-slide-btn {
+      width: 100%;
+      max-width: 320px;
+      padding: 18px;
+      border: none;
+      border-radius: 16px;
+      background: #ffffff;
+      color: #0a0a0a;
+      font-size: var(--font-size);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .exit-slide-btn:active { transform: scale(0.97); }
+
     /* 저장 중 로딩 오버레이 */
     .loading-overlay {
       display: none;
@@ -1412,7 +1442,9 @@
       const trip = trips[currentTripIndex];
       const bodyId = isPreview ? 'detailBody' : 'detailBodyReview';
       const body = document.getElementById(bodyId);
-      const total = trip.photos.length;
+      // 카톡으로 열었을 때(reviewPage)만 맨 뒤에 재진입 카드를 붙인다 — 슬라이드 번호에도 포함시켜
+      // 사진 3장이면 마지막이 4/4가 되게 한다. 내 피드에서 보는 previewPage는 그대로 3/3
+      const total = isPreview ? trip.photos.length : trip.photos.length + 1;
       // 사진·영상을 저장된 순서 그대로 슬라이드로 (영상이면 video, 아니면 img)
       body.innerHTML = trip.photos.map((media, i) => {
         const inner = media.type === 'video'
@@ -1432,7 +1464,16 @@
           ${media.content ? `<div class="slide-content">${media.content}</div>` : ''}
         </div>
       `;
-      }).join('');
+      }).join('') + (isPreview ? '' : `
+        <div class="photo-slide exit-slide">
+          <div class="slide-number">${total} / ${total}</div>
+          <div class="exit-slide-text">여기까지 보셨네요 🎣
+
+사진 몇 장이면
+후기 하나 완성돼요</div>
+          <button class="exit-slide-btn" onclick="goWriteFromReview()">Ra-Review 열기</button>
+        </div>
+      `);
       body.scrollTop = 0;
 
       // 후기 방향 자동 감지: 첫 사진이 가로면 '가로 후기'로 보고 body에 lstrip(가로로 보기 유도)
@@ -1628,6 +1669,14 @@
       resetAutosaveState('idle');
       showPage('writePage');
       initPhotoSortable();
+    }
+
+    // 후기 맨 뒤 재진입 카드의 버튼. 카톡 링크로 들어오면 view-mode가 붙어 홈이
+    // display:none 상태라, 그대로 goToWrite()만 부르면 나중에 빈 화면을 보게 된다 —
+    // 반드시 view-mode부터 벗겨낸 뒤 진입시킨다.
+    function goWriteFromReview() {
+      document.body.classList.remove('view-mode');
+      goToWrite();
     }
 
     // 내 후기가 아니면 조용히 무시한다. 편집 진입은 스와이프 제스처와 공용 경로라
