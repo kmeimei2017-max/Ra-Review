@@ -1178,8 +1178,10 @@
     function isAdmin()        { return !!(myProfile && myProfile.is_admin); }
     function isBlocked()      { return !!(myProfile && myProfile.is_blocked); }
     function isMine(trip)     { return !!(currentUser && trip && trip.author_id === currentUser.id); }
-    function canEditTrip(t)   { return isMine(t) && !isBlocked(); }        // 관리자도 남의 글은 수정 못 함
-    function canDeleteTrip(t) { return !!t && (isMine(t) || isAdmin()); }  // 관리자는 삭제만 가능
+    // locked = 만질 수 없는 자료(예: 사용법 설명서). 가입 시 복사돼도 잠김이 그대로 따라온다 —
+    // 내 것이 됐다고 지우거나 고치면 안 되는 후기라서, 소유권과 별개로 항상 막는다.
+    function canEditTrip(t)   { return isMine(t) && !isBlocked() && !t.locked; } // 관리자도 남의 글은 수정 못 함
+    function canDeleteTrip(t) { return !!t && !t.locked && (isMine(t) || isAdmin()); }  // 관리자는 삭제만 가능
 
     const PROFILE_ICON_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
 
@@ -1452,9 +1454,14 @@
     // 삭제 버튼은 내 후기(또는 관리자)일 때만 보인다.
     // 보내기(공유)는 남의 후기라도 그대로 둔다 — 공유 링크는 이미 완전 공개이고,
     // 단톡방으로 퍼뜨리는 건 이 앱이 하려는 일 그 자체다.
+    // 단, 잠긴 후기(설명서 등)는 드로어 전체를 숨긴다 — 사진 안에 이미 버튼 그림이
+    // 들어있어서(예: 5번 슬라이드) 진짜 버튼이 그 위에 겹쳐 보이기 때문이다.
     function updateDetailDrawer() {
+      const trip = trips[currentTripIndex];
+      const drawer = document.getElementById('detailDrawer');
+      if (drawer) drawer.style.display = (trip && trip.locked) ? 'none' : '';
       const delBtn = document.querySelector('#detailDrawer .dfab-del');
-      if (delBtn) delBtn.style.display = canDeleteTrip(trips[currentTripIndex]) ? '' : 'none';
+      if (delBtn) delBtn.style.display = canDeleteTrip(trip) ? '' : 'none';
     }
 
     function showPhoto(pageId = 'previewPage') {
