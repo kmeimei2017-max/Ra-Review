@@ -1348,6 +1348,9 @@
     const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 영상 최대 용량(50MB)
     let currentTripIndex = 0;
     let currentPhotoIndex = 0;
+    // 마지막으로 본 후기. 홈으로 나왔다가 스와이프로 돌아올 때 보던 자리로 되돌린다 —
+    // 매번 최신 후기로 튕기면 2번·3번 후기는 탭으로만 열 수 있어 좌우 이동이 끊긴다.
+    let lastViewedTripId = null;
     let editingTripId = null;
 
     function showPage(pageId) {
@@ -1448,6 +1451,8 @@
       currentTripIndex = trips.findIndex(t => t.id === tripId);
       currentPhotoIndex = 0;
       const pageId = mode === 'review' ? 'reviewPage' : 'previewPage';
+      // 카톡 링크로 열린 남의 후기(review)는 내 피드에 없으므로 기억하지 않는다
+      if (mode !== 'review') lastViewedTripId = tripId;
       showPage(pageId);
       showPhoto(pageId);
       if (pageId === 'previewPage') updateDetailDrawer();
@@ -2223,20 +2228,23 @@
       viewTrip(editingTripId, 'preview');
     }
 
-    // 메인 → 미리보기 스와이프: 목록 최상단(가장 최근) 후기를 염
-    function goToLatestPreview() {
+    // 메인 → 미리보기 스와이프: 보던 후기로 이어서 돌아간다.
+    // 처음 들어왔거나 그 후기가 사라졌으면 가장 최근 후기를 연다.
+    function resumePreview() {
       if (!trips.length) return;
       const latest = [...trips].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-      viewTrip(latest.id, 'preview');
+      const target = trips.find(t => t.id === lastViewedTripId) || latest;
+      viewTrip(target.id, 'preview');
     }
 
-    // 메인 → 편집 스와이프: 새 글이 아니라 최근 후기를 바로 수정 — 미리보기→편집과 의미를 통일.
-    // 남의 후기는 수정할 수 없으니 "내 후기 중 최신"으로 한정한다.
-    function goToEditLatestTrip() {
+    // 메인 → 편집 스와이프: 새 글이 아니라 보던 후기를 바로 수정 — 미리보기→편집과 의미를 통일.
+    // 남의 후기는 수정할 수 없으니 "내 후기" 안에서만 고른다.
+    function resumeEditTrip() {
       if (!currentUser || isBlocked()) return;
       const mine = [...trips].filter(isMine).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       if (!mine.length) return;
-      currentTripIndex = trips.findIndex(t => t.id === mine[0].id);
+      const target = mine.find(t => t.id === lastViewedTripId) || mine[0];
+      currentTripIndex = trips.findIndex(t => t.id === target.id);
       goToEditTrip();
     }
 
@@ -2357,8 +2365,8 @@
       onSwipeRight: () => goToPreviewFromWrite(),
     });
     initSwipeNav(document.getElementById('homePage'), {
-      onSwipeLeft: () => goToLatestPreview(),
-      onSwipeRight: () => goToEditLatestTrip(),
+      onSwipeLeft: () => resumePreview(),
+      onSwipeRight: () => resumeEditTrip(),
     });
 
     // 초기화
