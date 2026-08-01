@@ -647,6 +647,7 @@
     }
 
     .write-header {
+      position: relative;          /* 저장 알림(.autosave-toast)의 기준점 */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -679,12 +680,30 @@
     .header-icon-btn:active { transform: scale(0.9); }
     .header-icon-btn svg { width: 30px; height: 30px; }
 
-    /* 자동저장 상태 표시 — 잔잔하게, 조작을 막지 않음. 탭하면 즉시 저장 강제(flushAutosave) */
+    /* 자동저장 상태 표시 — 잔잔하게, 조작을 막지 않음. 탭하면 저장하고 메인으로(exitWritePage) */
     .autosave-btn.idle .as-icon { opacity: 0.35; }
-    .autosave-btn.saved .as-icon { opacity: 0.85; }
+    /* 저장됨은 초록으로 남긴다 — 투명도만으로는 폰에서 저장 여부를 구분할 수 없었다 */
+    .autosave-btn.saved .as-icon { opacity: 1; color: #16a34a; }
     .autosave-btn.saving .as-icon { animation: as-spin 0.9s linear infinite; }
     .autosave-btn.error .as-icon { color: #ff6b6b; }
     @keyframes as-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* 저장이 끝난 순간에만 잠깐 떴다 사라지는 알림 — 평소엔 조용하고 필요할 때만 말한다 */
+    .autosave-toast {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      z-index: 20;
+      transform: translate(-50%, -6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.45s ease, transform 0.45s ease;
+      font-size: 16px;
+      font-weight: 700;
+      color: #4ade80;
+      white-space: nowrap;
+    }
+    .autosave-toast.show { opacity: 1; transform: translate(-50%, 6px); }
 
     .write-content {
       flex: 1;
@@ -1084,10 +1103,11 @@
           <button class="header-icon-btn" onclick="document.getElementById('photoInput').click()" aria-label="사진 추가">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
           </button>
-          <button class="header-icon-btn autosave-btn idle" id="autosaveBtn" onclick="flushAutosave()" aria-label="자동저장 · 탭하면 즉시 저장">
+          <button class="header-icon-btn autosave-btn idle" id="autosaveBtn" onclick="saveAndGoHome()" aria-label="자동저장 · 탭하면 저장하고 메인으로">
             <svg class="as-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
           </button>
         </div>
+        <div class="autosave-toast" id="autosaveToast">자동 저장됐어요</div>
       </div>
       <div class="write-content">
         <div class="form-section">
@@ -1444,6 +1464,8 @@
       const body = document.getElementById(bodyId);
       // 카톡으로 열었을 때(reviewPage)만 맨 뒤에 재진입 카드를 붙인다 — 슬라이드 번호에도 포함시켜
       // 사진 3장이면 마지막이 4/4가 되게 한다. 내 피드에서 보는 previewPage는 그대로 3/3
+      // 카드는 로그인과 무관하게 항상 붙인다(후기페이지의 유일한 출구라 회원에게도 필요).
+      // 다만 문구는 가른다 — 회원에게 "후기 하나 완성돼요"를 매번 권하면 잔소리가 된다.
       const total = isPreview ? trip.photos.length : trip.photos.length + 1;
       // 사진·영상을 저장된 순서 그대로 슬라이드로 (영상이면 video, 아니면 img)
       body.innerHTML = trip.photos.map((media, i) => {
@@ -1467,10 +1489,13 @@
       }).join('') + (isPreview ? '' : `
         <div class="photo-slide exit-slide">
           <div class="slide-number">${total} / ${total}</div>
-          <div class="exit-slide-text">여기까지 보셨네요 🎣
+          <div class="exit-slide-text">${currentUser ? `같이 만들어가는 앱이에요
+
+불편한 점이나 아쉬운 점
+편하게 알려주세요` : `여기까지 보셨네요 🎣
 
 사진 몇 장이면
-후기 하나 완성돼요</div>
+후기 하나 완성돼요`}</div>
           <button class="exit-slide-btn" onclick="enterAppFromReview()">Ra-Review 열기</button>
         </div>
       `);
@@ -1766,6 +1791,11 @@
       return new Promise((resolve) => {
         // 이미지가 아니면 원본 그대로 사용
         if (!file.type.startsWith('image/')) {
+          resolve(file);
+          return;
+        }
+        // GIF는 캔버스로 다시 그리면 움직임이 첫 장면 하나로 납작해진다 → 원본 그대로 올린다
+        if (file.type === 'image/gif') {
           resolve(file);
           return;
         }
@@ -2085,19 +2115,32 @@
 
     // ===== 자동저장 =====
     // 조작 2초 후 조용히 저장. 화면을 덮는 로딩 없이 헤더의 작은 아이콘 상태로만 표시.
-    // 상태: idle(아직 저장할 내용 없음) · saving(저장 중, 회전) · saved(저장됨) · error(실패)
+    // 상태: idle(아직 저장할 내용 없음) · saving(저장 중, 회전) · saved(초록) · error(빨강)
+    // 저장이 끝난 순간에만 "자동 저장됐어요"가 잠깐 떴다 사라진다 — 투명도 차이만으로는
+    // 폰에서 저장 여부를 알 수 없어 "저장됐나?" 하는 불안이 남았다.
     let autosaveTimer = null;
     let autosaveInFlight = false;
     let autosavePending = false;
 
-    const AUTOSAVE_LABELS = { idle: '자동저장 대기', saving: '저장 중…', saved: '저장됨', error: '저장 실패 · 탭하면 재시도' };
+    const AUTOSAVE_LABELS = { idle: '자동저장 대기', saving: '저장 중…', saved: '저장됨', error: '저장 실패' };
 
     function setSaveStatus(state) {
       const btn = document.getElementById('autosaveBtn');
       if (!btn) return;
       btn.classList.remove('idle', 'saving', 'saved', 'error');
       btn.classList.add(state);
-      btn.setAttribute('aria-label', `${AUTOSAVE_LABELS[state] || ''} · 탭하면 즉시 저장`);
+      btn.setAttribute('aria-label', `${AUTOSAVE_LABELS[state] || ''} · 탭하면 저장하고 메인으로`);
+    }
+
+    // "자동 저장됐어요"를 잠깐 보여준다. 저장이 실제로 끝난 순간에만 부른다 —
+    // 편집 진입 시에도 saved 상태가 되는데(goToEditTrip) 그때 뜨면 뜬금없다.
+    let autosaveToastTimer = null;
+    function showSavedToast() {
+      const toast = document.getElementById('autosaveToast');
+      if (!toast) return;
+      clearTimeout(autosaveToastTimer);
+      toast.classList.add('show');
+      autosaveToastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
     }
 
     function resetAutosaveState(initialState) {
@@ -2122,6 +2165,7 @@
           await loadTrips();
           renderFeed();
           setSaveStatus('saved');
+          showSavedToast();
         } else {
           // 저장할 내용이 없거나 권한이 없는 경우 — 'saving' 회전 상태로 굳지 않게 되돌린다
           setSaveStatus('idle');
@@ -2148,6 +2192,19 @@
     function exitWritePage() {
       flushAutosave();
       goToHome();
+    }
+
+    // 자동저장 버튼 — 저장을 끝내고 "자동 저장됐어요"를 보여준 뒤 메인으로.
+    // 좌스와이프(exitWritePage)는 기다리지 않고 바로 나간다 — 제스처는 빠른 게 자연스럽다.
+    // 버튼의 예전 역할이던 '즉시 저장'은 자동저장이 2초마다 도는 이상 필요가 없었다.
+    async function saveAndGoHome() {
+      clearTimeout(autosaveTimer);
+      await runAutosave();
+      const btn = document.getElementById('autosaveBtn');
+      // 저장에 실패했으면 나가지 않는다 — 안 써진 글을 들고 화면을 떠나면 안 된다
+      if (btn && btn.classList.contains('error')) return;
+      // 저장된 경우에만 알림을 볼 시간을 잠깐 준다
+      setTimeout(goToHome, btn && btn.classList.contains('saved') ? 900 : 0);
     }
 
     // 편집 → 미리보기 스와이프: 저장된 후기가 있을 때만 이동(신규 글은 아직 갈 곳이 없음)
