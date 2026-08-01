@@ -1178,10 +1178,12 @@
     function isAdmin()        { return !!(myProfile && myProfile.is_admin); }
     function isBlocked()      { return !!(myProfile && myProfile.is_blocked); }
     function isMine(trip)     { return !!(currentUser && trip && trip.author_id === currentUser.id); }
-    // locked = 만질 수 없는 자료(예: 사용법 설명서). 가입 시 복사돼도 잠김이 그대로 따라온다 —
-    // 내 것이 됐다고 지우거나 고치면 안 되는 후기라서, 소유권과 별개로 항상 막는다.
-    function canEditTrip(t)   { return isMine(t) && !isBlocked() && !t.locked; } // 관리자도 남의 글은 수정 못 함
-    function canDeleteTrip(t) { return !!t && !t.locked && (isMine(t) || isAdmin()); }  // 관리자는 삭제만 가능
+    // locked = 첫 사용자를 위한 안내 후기(설명서·라리뷰). 가입 시 복사돼도 잠김이 그대로 따라온다.
+    // 잠금이 숨기는 건 보내기·삭제 버튼(드로어)뿐이고, 좌우 스와이프 이동은 그대로 둔다 —
+    // 드로어가 통째로 숨는 화면이라 이동까지 막으면 좌스와이프가 무반응이 되고,
+    // 관리자가 앱에서 안내 문구를 고칠 방법도 사라진다.
+    function canEditTrip(t)   { return isMine(t) && !isBlocked(); }        // 관리자도 남의 글은 수정 못 함
+    function canDeleteTrip(t) { return !!t && !t.locked && (isMine(t) || isAdmin()); }  // 잠긴 후기 삭제 금지는 유지
 
     const PROFILE_ICON_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
 
