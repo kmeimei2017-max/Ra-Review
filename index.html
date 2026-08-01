@@ -286,6 +286,7 @@
     .slide-actions {
       align-self: flex-end;
       display: flex;
+      flex-direction: column; /* 보내기(위) · 삭제(아래) 세로 스택 */
       gap: 16px;
       margin: 0 30px 16px;
       pointer-events: auto;
@@ -522,10 +523,10 @@
     .slide-content {
       /* .slide-bottom(플렉스 세로) 안의 자식으로 배치된다 — 절대 위치가 아니다 */
       background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.4), transparent);
-      /* ⚠️ 좌우 36px은 편집창 캡션칸의 여백 총합(12+10+... — .write-content/.photo-form-group
+      /* ⚠️ 좌우 25px은 편집창 캡션칸의 여백 총합(6+5+... — .write-content/.photo-form-group
          참고)과 맞춘 값이다. 쓸 때와 볼 때의 줄바꿈 위치를 같게 하려는 것이므로 한쪽만
          바꾸지 말 것. 두 값은 항상 같이 움직여야 한다 */
-      padding: 36px;
+      padding: 25px;
       padding-bottom: calc(36px + max(24px, env(safe-area-inset-bottom)));
       overflow-y: auto;
       overflow-x: hidden;
@@ -721,9 +722,9 @@
     .write-content {
       flex: 1;
       overflow-y: auto;
-      /* ⚠️ 이 여백은 .photo-form-group·.form-input 여백과 합쳐져 미리보기 .slide-content(36px)와
-         맞춘 총합(36px)을 이룬다. 셋 중 하나만 바꾸면 편집창-미리보기 줄바꿈이 다시 어긋난다 */
-      padding: 12px;
+      /* ⚠️ 이 여백은 .photo-form-group·.form-input 여백과 합쳐져 미리보기 .slide-content(25px)와
+         맞춘 총합(25px)을 이룬다. 셋 중 하나만 바꾸면 편집창-미리보기 줄바꿈이 다시 어긋난다 */
+      padding: 6px;
     }
 
     .form-section {
@@ -949,7 +950,7 @@
 
     .photo-form-group {
       margin-bottom: 24px;
-      padding: 10px;
+      padding: 5px;
       border: 1px solid var(--border-dark);
       border-radius: 8px;
       background: var(--bg-card);
