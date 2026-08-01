@@ -267,15 +267,28 @@
       flex-direction: column;
     }
 
-    /* 우측상단 고정 액션바 — 캡션 텍스트(.slide-content)와 겹치지 않도록 하단 대신 상단에 노출 */
-    .detail-drawer {
-      position: fixed;
-      right: 30px;
-      top: 60px;
-      z-index: 30;
+    /* 캡션(.slide-content)과 보내기·삭제 버튼(.slide-actions)을 함께 감싸는 슬라이드 하단 영역.
+       버튼을 화면에 고정하지 않고 슬라이드 안에 넣는 이유 — 세로 스크롤은 CSS 스냅뿐이라
+       "지금 몇 번째 슬라이드"를 추적하는 JS가 없다. 그래서 캡션 높이를 따라다니는 고정 버튼을
+       만들 수 없고, 슬라이드마다 캡션 바로 위에 반복해서 렌더한다(showPhoto). */
+    .slide-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      max-height: 60%;
       display: flex;
       flex-direction: column;
+      pointer-events: none; /* 빈 영역이 좌우 스와이프(initSwipeNav)를 가로채지 않게 */
+    }
+
+    .slide-actions {
+      align-self: flex-end;
+      display: flex;
       gap: 16px;
+      margin: 0 30px 16px;
+      pointer-events: auto;
     }
 
     .dfab {
@@ -507,20 +520,17 @@
     body.mic-hidden .mic-wrap .form-input { padding-bottom: 14px; }
 
     .slide-content {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 10;
+      /* .slide-bottom(플렉스 세로) 안의 자식으로 배치된다 — 절대 위치가 아니다 */
       background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.4), transparent);
-      /* ⚠️ 좌우 48px은 편집창 캡션칸의 여백 총합(20+16+12)과 맞춘 값이다.
-         쓸 때와 볼 때의 줄바꿈 위치를 같게 하려는 것이므로 한쪽만 바꾸지 말 것.
-         버튼(.detail-drawer)을 다시 화면 하단으로 옮기면 이 글자 위에 겹친다 */
-      padding: 48px;
+      /* ⚠️ 좌우 36px은 편집창 캡션칸의 여백 총합(12+10+... — .write-content/.photo-form-group
+         참고)과 맞춘 값이다. 쓸 때와 볼 때의 줄바꿈 위치를 같게 하려는 것이므로 한쪽만
+         바꾸지 말 것. 두 값은 항상 같이 움직여야 한다 */
+      padding: 36px;
       padding-bottom: calc(36px + max(24px, env(safe-area-inset-bottom)));
-      max-height: 50%;
       overflow-y: auto;
       overflow-x: hidden;
+      min-height: 0; /* 플렉스 자식의 내부 스크롤(overflow-y:auto)이 먹히려면 필요 */
+      pointer-events: auto;
       color: #ffffff;
       font-size: var(--font-size);
       line-height: 1.6;
@@ -711,7 +721,9 @@
     .write-content {
       flex: 1;
       overflow-y: auto;
-      padding: 20px;
+      /* ⚠️ 이 여백은 .photo-form-group·.form-input 여백과 합쳐져 미리보기 .slide-content(36px)와
+         맞춘 총합(36px)을 이룬다. 셋 중 하나만 바꾸면 편집창-미리보기 줄바꿈이 다시 어긋난다 */
+      padding: 12px;
     }
 
     .form-section {
@@ -937,7 +949,7 @@
 
     .photo-form-group {
       margin-bottom: 24px;
-      padding: 16px;
+      padding: 10px;
       border: 1px solid var(--border-dark);
       border-radius: 8px;
       background: var(--bg-card);
@@ -992,7 +1004,7 @@
       .profile-sheet { bottom: 92px; right: 20px; }
       .cam-bubble { bottom: 102px; right: 92px; }
       .dfab { width: 60px; height: 60px; }
-      .detail-drawer { right: 20px; top: 60px; gap: 12px; }
+      .slide-actions { margin: 0 20px 12px; gap: 12px; }
       .header-icon-btn { width: 60px; height: 60px; }
       .write-header-actions { gap: 12px; }
 
@@ -1074,7 +1086,8 @@
       <div class="cam-bubble" id="camBubble">세로 <b>9:16</b>으로 찍으면 깔끔해요</div>
     </div>
 
-    <!-- 미리보기페이지 (본인용) — 하단에 보내기/삭제 버튼 고정 노출. 수정/뒤로가기는 좌우 스와이프로 -->
+    <!-- 미리보기페이지 (본인용) — 보내기/삭제 버튼은 각 슬라이드 안 캡션 위에 렌더된다(showPhoto).
+         수정/뒤로가기는 좌우 스와이프로 -->
     <div id="previewPage" class="page trip-detail">
       <div class="rotate-hint-h">
         <div class="ri-icon">📱</div>
@@ -1082,15 +1095,6 @@
         <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요 🎣</div>
       </div>
       <div class="detail-body" id="detailBody"></div>
-      <!-- 하단 고정 액션바 -->
-      <div class="detail-drawer" id="detailDrawer">
-        <button class="dfab" onclick="shareLink()" aria-label="보내기">
-          <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
-        </button>
-        <button class="dfab dfab-del" onclick="deleteTrip()" aria-label="삭제">
-          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>
-      </div>
     </div>
 
     <!-- 후기페이지 (친구용·카톡) — 읽기 전용, 뒤로가기만 -->
@@ -1353,6 +1357,9 @@
     let removedPhotoIds = []; // 편집 중 지운 기존 사진의 id. 저장 시 실제로 삭제한다.
     const VIDEO_MAX_SEC = 15;          // 영상 최대 길이(초)
     const VIDEO_MAX_BYTES = 50 * 1024 * 1024; // 영상 최대 용량(50MB)
+    // 보내기·삭제 버튼 — 슬라이드마다(사진 수만큼) 반복 렌더되므로 상수로 뺀다
+    const SHARE_SVG = '<svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>';
+    const DEL_SVG = '<svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
     let currentTripIndex = 0;
     let currentPhotoIndex = 0;
     // 마지막으로 본 후기. 홈으로 나왔다가 스와이프로 돌아올 때 보던 자리로 되돌린다 —
@@ -1468,14 +1475,13 @@
     // 삭제 버튼은 내 후기(또는 관리자)일 때만 보인다.
     // 보내기(공유)는 남의 후기라도 그대로 둔다 — 공유 링크는 이미 완전 공개이고,
     // 단톡방으로 퍼뜨리는 건 이 앱이 하려는 일 그 자체다.
-    // 단, 잠긴 후기(설명서 등)는 드로어 전체를 숨긴다 — 사진 안에 이미 버튼 그림이
-    // 들어있어서(예: 5번 슬라이드) 진짜 버튼이 그 위에 겹쳐 보이기 때문이다.
+    // 잠긴 후기(설명서 등)는 버튼 자체를 렌더링하지 않는다 — showPhoto()의 actions 분기가
+    // 처리한다(사진 안에 이미 버튼 그림이 있어서 진짜 버튼이 겹쳐 보이기 때문). 여기서는
+    // 보는 도중 로그아웃 등으로 바뀔 수 있는 삭제 권한만 슬라이드마다 다시 반영한다.
     function updateDetailDrawer() {
       const trip = trips[currentTripIndex];
-      const drawer = document.getElementById('detailDrawer');
-      if (drawer) drawer.style.display = (trip && trip.locked) ? 'none' : '';
-      const delBtn = document.querySelector('#detailDrawer .dfab-del');
-      if (delBtn) delBtn.style.display = canDeleteTrip(trip) ? '' : 'none';
+      document.querySelectorAll('#detailBody .dfab-del')
+        .forEach(btn => { btn.style.display = canDeleteTrip(trip) ? '' : 'none'; });
     }
 
     function showPhoto(pageId = 'previewPage') {
@@ -1488,6 +1494,14 @@
       // 카드는 로그인과 무관하게 항상 붙인다(후기페이지의 유일한 출구라 회원에게도 필요).
       // 다만 문구는 가른다 — 회원에게 "후기 하나 완성돼요"를 매번 권하면 잔소리가 된다.
       const total = isPreview ? trip.photos.length : trip.photos.length + 1;
+      // 보내기·삭제 버튼 — previewPage(내 화면)이고 잠기지 않은 후기일 때만.
+      // 화면에 고정된 버튼 하나로는 슬라이드마다 다른 캡션 높이를 따라갈 수 없어서
+      // (스크롤 스냅이라 "지금 몇 번째 슬라이드"를 추적하는 코드가 없다) 슬라이드마다 반복해 넣는다.
+      const actions = (isPreview && !trip.locked) ? `
+          <div class="slide-actions">
+            <button class="dfab" onclick="shareLink()" aria-label="보내기">${SHARE_SVG}</button>
+            <button class="dfab dfab-del" onclick="deleteTrip()" aria-label="삭제">${DEL_SVG}</button>
+          </div>` : '';
       // 사진·영상을 저장된 순서 그대로 슬라이드로 (영상이면 video, 아니면 img)
       body.innerHTML = trip.photos.map((media, i) => {
         const inner = media.type === 'video'
@@ -1504,7 +1518,10 @@
         <div class="photo-slide">
           ${inner}
           <div class="slide-number">${label}</div>
-          ${media.content ? `<div class="slide-content">${media.content}</div>` : ''}
+          <div class="slide-bottom">
+            ${actions}
+            ${media.content ? `<div class="slide-content">${media.content}</div>` : ''}
+          </div>
         </div>
       `;
       }).join('') + (isPreview ? '' : `
