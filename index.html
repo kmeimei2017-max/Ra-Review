@@ -267,11 +267,11 @@
       flex-direction: column;
     }
 
-    /* 우측하단 고정 액션바 — 메인페이지 FAB(.fab-cam)와 같은 위치에 세로로 쌓아 항상 노출 */
+    /* 우측상단 고정 액션바 — 캡션 텍스트(.slide-content)와 겹치지 않도록 하단 대신 상단에 노출 */
     .detail-drawer {
       position: fixed;
       right: 30px;
-      bottom: 30px;
+      top: 60px;
       z-index: 30;
       display: flex;
       flex-direction: column;
@@ -513,7 +513,10 @@
       right: 0;
       z-index: 10;
       background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.4), transparent);
-      padding: 24px;
+      /* ⚠️ 좌우 48px은 편집창 캡션칸의 여백 총합(20+16+12)과 맞춘 값이다.
+         쓸 때와 볼 때의 줄바꿈 위치를 같게 하려는 것이므로 한쪽만 바꾸지 말 것.
+         버튼(.detail-drawer)을 다시 화면 하단으로 옮기면 이 글자 위에 겹친다 */
+      padding: 48px;
       padding-bottom: calc(36px + max(24px, env(safe-area-inset-bottom)));
       max-height: 50%;
       overflow-y: auto;
@@ -731,6 +734,9 @@
       color: var(--text-light);
       font-size: var(--font-size);
       font-family: inherit;
+      /* 미리보기 캡션(.slide-content)과 같은 값. 브라우저 기본값(≈1.2)에 맡기면
+         쓸 때와 볼 때의 줄 간격이 달라진다 */
+      line-height: 1.6;
       resize: vertical;
       min-height: 44px;
     }
@@ -986,13 +992,14 @@
       .profile-sheet { bottom: 92px; right: 20px; }
       .cam-bubble { bottom: 102px; right: 92px; }
       .dfab { width: 60px; height: 60px; }
-      .detail-drawer { right: 20px; bottom: 20px; gap: 12px; }
+      .detail-drawer { right: 20px; top: 60px; gap: 12px; }
       .header-icon-btn { width: 60px; height: 60px; }
       .write-header-actions { gap: 12px; }
-      .slide-content { padding-right: 92px; }
 
+      /* 편집창과 글자 크기를 맞춘다 — 다르면 같은 문장도 줄바꿈 위치가 어긋난다 */
       .form-input,
-      .login-input {
+      .login-input,
+      .slide-content {
         font-size: 18px;
       }
 
