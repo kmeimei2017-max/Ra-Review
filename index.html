@@ -2366,12 +2366,16 @@
     }
 
     // 메인 → 편집 스와이프: 새 글이 아니라 보던 후기를 바로 수정 — 미리보기→편집과 의미를 통일.
-    // 남의 후기는 수정할 수 없으니 "내 후기" 안에서만 고른다.
+    // 고칠 수 있는 게 있으면 "내 후기" 중에서 고르고, 없으면(비회원·차단·내 후기 0) 보던 후기를
+    // 그냥 연다 — 편집 여부는 goToEditTrip()이 canEditTrip()으로 판정해 구경 모드로 띄운다.
+    // ⚠️ 여기서 막으면 안 된다. 미리보기→좌스와이프는 구경 모드로 열리는데 메인→우스와이프만
+    //    무반응이면 같은 화면으로 가는 두 길 중 하나만 끊겨 순환이 깨진다.
     function resumeEditTrip() {
-      if (!currentUser || isBlocked()) return;
-      const mine = [...trips].filter(isMine).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      if (!mine.length) return;
-      const target = mine.find(t => t.id === lastViewedTripId) || mine[0];
+      if (!trips.length) return;
+      const byNewest = (a, b) => new Date(b.createdAt) - new Date(a.createdAt);
+      const mine = (currentUser && !isBlocked()) ? [...trips].filter(isMine).sort(byNewest) : [];
+      const target = mine.find(t => t.id === lastViewedTripId) || mine[0]
+        || trips.find(t => t.id === lastViewedTripId) || [...trips].sort(byNewest)[0];
       currentTripIndex = trips.findIndex(t => t.id === target.id);
       goToEditTrip();
     }
