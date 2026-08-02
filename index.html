@@ -702,6 +702,53 @@
     .autosave-btn.error .as-icon { color: #ff6b6b; }
     @keyframes as-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+    /* ── 구경 모드 ──
+       남의 후기를 좌스와이프로 열었을 때. 편집화면 구조는 보여주되 아무것도 눌리지 않는다.
+       (예전엔 아예 안 열려서 좌스와이프가 무반응이었다 — "화면은 3개"라는 안내와 어긋났다) */
+    body.write-demo .write-header-actions,
+    body.write-demo .write-content {
+      pointer-events: none;        /* 입력이 막히니 onchange 도 안 걸리고 자동저장도 안 돈다 */
+      user-select: none;
+    }
+    body.write-demo .write-content { opacity: 0.72; }
+
+    .demo-banner {
+      position: fixed;             /* 편집화면을 스크롤해도 화면 한가운데 그대로 떠 있는다 */
+      left: 8%;
+      right: 8%;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 30;
+      padding: 24px 20px 20px;
+      border: 1px solid var(--border-dark);
+      border-radius: 20px;
+      background: rgba(12, 12, 12, 0.93);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+      text-align: center;
+      display: none;
+      pointer-events: none;        /* ★ 배너 위를 쓸어도 상하좌우 스와이프가 그대로 통과한다 */
+    }
+    body.write-demo .demo-banner { display: block; animation: demoIn 0.32s ease; }
+    @keyframes demoIn { from { opacity: 0; transform: translateY(calc(-50% + 10px)); } }
+
+    .demo-banner .db-t1 { font-size: 19px; font-weight: 800; color: var(--text-light); }
+    .demo-banner .db-t2 { margin-top: 9px; font-size: 13.5px; line-height: 1.6; color: #a0a0a0; }
+    .demo-banner .db-cta {
+      pointer-events: auto;        /* 배너에서 유일하게 눌리는 것 */
+      margin-top: 18px;
+      width: 100%;
+      padding: 13px 0;
+      border: none;
+      border-radius: 999px;
+      background: #FEE500;         /* 카카오 노랑 */
+      color: #191600;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .demo-banner .db-cta:active { transform: scale(0.97); }
+
     /* 저장이 끝난 순간에만 잠깐 떴다 사라지는 알림 — 평소엔 조용하고 필요할 때만 말한다 */
     .autosave-toast {
       position: absolute;
@@ -1121,6 +1168,14 @@
         </div>
         <div class="autosave-toast" id="autosaveToast">자동 저장됐어요</div>
       </div>
+
+      <!-- 구경 모드 안내 (남의 후기를 좌스와이프로 열었을 때만 보인다).
+           상자는 pointer-events:none 이라 위를 쓸어도 스와이프가 그대로 통과하고, 버튼만 눌린다. -->
+      <div class="demo-banner" id="demoBanner">
+        <div class="db-t1">여기가 편집화면이에요</div>
+        <div class="db-t2">지금은 구경만 할 수 있어요<br>좌우로 밀어 더 구경하셔도 돼요</div>
+        <button type="button" class="db-cta" id="demoCtaBtn" onclick="onDemoCta()">카카오로 시작하기</button>
+      </div>
       <div class="write-content">
         <div class="form-section">
           <input id="photoInput" type="file" multiple accept="image/*,video/*" class="photo-input" onchange="handlePhotoSelect(event)">
@@ -1372,6 +1427,8 @@
     function showPage(pageId) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(pageId).classList.add('active');
+      // 편집화면을 떠나면 구경 모드는 반드시 풀린다 (다음에 내 글을 열 때 눌리지 않으면 큰일)
+      if (pageId !== 'writePage') document.body.classList.remove('write-demo');
       // 미리보기/후기페이지를 떠나면 가로후기 보기 상태 해제 (작성·홈은 항상 세로 유도)
       if (pageId !== 'previewPage' && pageId !== 'reviewPage') document.body.classList.remove('lstrip');
     }
@@ -1729,6 +1786,7 @@
 
     function goToWrite() {
       if (!requireWriteAccess()) return;
+      setWriteDemo(false);          // 구경 모드에서 넘어온 경우를 위해
       selectedPhotos = [];
       removedPhotoIds = [];
       editingTripId = null;
@@ -1750,12 +1808,16 @@
       goToHome();
     }
 
-    // 내 후기가 아니면 조용히 무시한다. 편집 진입은 스와이프 제스처와 공용 경로라
-    // 여기서 로그인을 유도하면 실수로 스친 스와이프가 화면을 날려버린다.
+    // 내 후기가 아니면 "구경 모드"로 연다 — 화면은 보여주되 아무것도 눌리지 않는다.
+    // 예전엔 조용히 무시했는데, 그러면 좌스와이프가 무반응이라 "화면은 3개"라는 안내가 거짓말이 된다.
+    // 로그인을 바로 띄우지 않는 이유는 그대로다 — 실수로 스친 스와이프가 화면을 날리면 안 된다.
     function goToEditTrip() {
       const trip = trips[currentTripIndex];
-      if (!canEditTrip(trip)) return;
-      editingTripId = trip.id;
+      if (!trip) return;
+      const demo = !canEditTrip(trip);
+      setWriteDemo(demo);
+
+      editingTripId = demo ? null : trip.id;   // 구경 모드에선 저장 대상을 잡지 않는다
       removedPhotoIds = [];
 
       selectedPhotos = trip.photos.map(media => ({
@@ -1771,13 +1833,26 @@
       document.getElementById('photoInput').value = '';
       document.getElementById('photoPreviewGrid').innerHTML = '';
       document.getElementById('photoFormsContainer').innerHTML = '';
-      resetAutosaveState('saved');
+      resetAutosaveState(demo ? 'idle' : 'saved');   // 구경 모드에 "저장됨" 초록불이 뜨면 오해한다
 
       renderPhotoPreview();
       renderPhotoForms();
 
       showPage('writePage');
-      initPhotoSortable();
+      if (!demo) initPhotoSortable();          // 구경 모드에선 사진 순서도 못 바꾼다
+    }
+
+    // 구경 모드 켜고 끄기. 배너 버튼은 로그인 여부에 따라 갈린다.
+    function setWriteDemo(on) {
+      document.body.classList.toggle('write-demo', !!on);
+      const btn = document.getElementById('demoCtaBtn');
+      if (btn) btn.textContent = currentUser ? '새 글 쓰기' : '카카오로 시작하기';
+    }
+
+    // 배너의 유일한 버튼 — 비회원은 로그인, 회원은 자기 편집화면으로
+    function onDemoCta() {
+      if (!currentUser) { requireWriteAccess(); return; }
+      goToWrite();
     }
 
     // 후기 삭제 (DB 후기/사진 + Storage 사진 파일까지 함께 삭제)
@@ -2201,6 +2276,9 @@
     }
 
     async function runAutosave() {
+      // 구경 모드는 절대 저장하지 않는다. 입력이 막혀 있어 여기까지 올 일이 없지만,
+      // RLS 거부가 200 + 0행으로 와서 "저장됨"으로 오해될 수 있으니 한 겹 더 막는다.
+      if (document.body.classList.contains('write-demo')) return;
       if (autosaveInFlight) { autosavePending = true; return; }
       autosaveInFlight = true;
       setSaveStatus('saving');
