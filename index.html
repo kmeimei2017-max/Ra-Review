@@ -736,7 +736,7 @@
     @keyframes demoIn { from { opacity: 0; transform: translateY(calc(-50% + 10px)); } }
 
     .demo-banner .db-t1 { font-size: 19px; font-weight: 800; color: var(--text-light); }
-    .demo-banner .db-t2 { margin-top: 9px; font-size: 13.5px; line-height: 1.6; color: #a0a0a0; }
+    .demo-banner .db-t2 { margin-top: 9px; font-size: 13.5px; line-height: 1.6; color: var(--text-light); }
     .demo-banner .db-cta {
       pointer-events: auto;        /* 배너에서 유일하게 눌리는 것 */
       margin-top: 18px;
@@ -1854,8 +1854,12 @@
     }
 
     // 배너의 유일한 버튼 — 비회원은 로그인, 회원은 자기 편집화면으로
+    // ⚠️ 비회원은 requireWriteAccess() 를 쓰지 않는다. 그걸 쓰면 WRITE_INTENT 가 남아
+    //    로그인하고 돌아오자마자 빈 작성화면이 열린다. 구경하다 가입한 사람에겐 갑작스럽다 —
+    //    홈에서 내 후기 3개를 보다가 "한 번 써볼까" 하며 새 글 쓰기를 누르는 게 자연스럽다.
+    //    "쓰겠다"는 의사는 메인의 새 글 쓰기 버튼(goToWrite)이 받는다. 그 경로만 의도를 남긴다.
     function onDemoCta() {
-      if (!currentUser) { requireWriteAccess(); return; }
+      if (!currentUser) { kakaoLogin(); return; }
       goToWrite();
     }
 
