@@ -1450,7 +1450,7 @@
 
     // 메인 피드는 "내 후기만" 보여준다. 로그인 전에는 기본 후기(is_template)를 보여준다.
     // ⚠️ 이건 화면용 필터일 뿐 권한이 아니다. 후기 열람은 RLS에서 여전히 전체 공개이고,
-    //    카톡 링크(?view=)로 들어온 남의 후기는 loadTripById()가 따로 가져온다.
+    //    카톡 링크(?view=)로 들어온 남의 후기는 loadTripByToken()이 따로 가져온다.
     async function loadTrips() {
       try {
         let q = getSupabase().from('trips').select('*, photos(*)');
@@ -1471,13 +1471,13 @@
     // 카톡 공유 링크(?view=) 전용 — 피드 필터와 무관하게 후기 하나만 가져온다.
     // ★ 이게 없으면 친구가 받은 링크가 "내 피드에 없는 후기"라서 열리지 않는다.
     //   공유가 이 앱의 존재 이유이므로 이 경로를 없애면 안 된다.
-    async function loadTripById(id) {
+    // 🚨 trip_by_token 은 security definer 라 RLS 를 우회한다. 그래서 목록 조회를 좁혀도
+    //    (010_narrow_select.sql) 토큰을 가진 사람은 그 후기 하나를 계속 볼 수 있다.
+    //    이 RPC 의 실행 권한(anon)을 막으면 카톡 공유가 통째로 죽는다.
+    async function loadTripByToken(token) {
       try {
         const { data, error } = await getSupabase()
-          .from('trips')
-          .select('*, photos(*)')
-          .eq('id', id)
-          .maybeSingle();
+          .rpc('trip_by_token', { p_token: token });
         if (error) throw error;
         return data ? shapeTrip(data) : null;
       } catch (e) {
@@ -1490,10 +1490,8 @@
       console.log('renderFeed 실행 - trips 데이터:', trips);
       console.log('localStorage rabongTrips:', localStorage.getItem('rabongTrips'));
 
-      // _external = 카톡 링크로 열어본 남의 후기. 화면에 필요해서 배열에만 담아둔 것이라
-      // 내 피드 목록에는 넣지 않는다.
-      const sorted = [...trips]
-        .filter(t => !t._external)
+      // 목록에서 빼는 기준은 feedTrips() 한 곳에 모아뒀다 — 좌우 스와이프도 같은 기준을 쓴다
+      const sorted = feedTrips()
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       const html = sorted.map(trip => {
         // 카드 대표 이미지: 대표사진 우선, 없으면 첫 '사진'(영상 URL은 카드에 못 쓰므로 제외)
@@ -2377,12 +2375,21 @@
       viewTrip(editingTripId, 'preview', true);
     }
 
+    // 메인 피드에 실제로 보이는 후기들 — renderFeed()와 같은 기준이어야 한다.
+    // ⚠️ _external = 카톡 링크로 열어본 남의 후기. 화면에 띄우려고 배열에만 담아둔 것이라
+    //    피드에는 안 나온다. 이걸 안 거르면 메인에서 좌우로 밀었을 때 목록에 없는 남의 후기가
+    //    열린다(실제로 그랬다 — 링크로 후기를 보고 4/4로 앱에 들어온 직후).
+    function feedTrips() {
+      return trips.filter(t => !t._external);
+    }
+
     // 메인 → 미리보기 스와이프: 보던 후기로, 보던 사진까지 이어서 돌아간다.
     // 처음 들어왔거나 그 후기가 사라졌으면 가장 최근 후기를 첫 장부터 연다.
     function resumePreview() {
-      if (!trips.length) return;
-      const latest = [...trips].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-      const target = trips.find(t => t.id === lastViewedTripId) || latest;
+      const mine = feedTrips();
+      if (!mine.length) return;
+      const latest = [...mine].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      const target = mine.find(t => t.id === lastViewedTripId) || latest;
       viewTrip(target.id, 'preview', true);
     }
 
@@ -2392,11 +2399,12 @@
     // ⚠️ 여기서 막으면 안 된다. 미리보기→좌스와이프는 구경 모드로 열리는데 메인→우스와이프만
     //    무반응이면 같은 화면으로 가는 두 길 중 하나만 끊겨 순환이 깨진다.
     function resumeEditTrip() {
-      if (!trips.length) return;
+      const feed = feedTrips();
+      if (!feed.length) return;
       const byNewest = (a, b) => new Date(b.createdAt) - new Date(a.createdAt);
-      const mine = (currentUser && !isBlocked()) ? [...trips].filter(isMine).sort(byNewest) : [];
+      const mine = (currentUser && !isBlocked()) ? feed.filter(isMine).sort(byNewest) : [];
       const target = mine.find(t => t.id === lastViewedTripId) || mine[0]
-        || trips.find(t => t.id === lastViewedTripId) || [...trips].sort(byNewest)[0];
+        || feed.find(t => t.id === lastViewedTripId) || [...feed].sort(byNewest)[0];
       currentTripIndex = trips.findIndex(t => t.id === target.id);
       goToEditTrip();
     }
@@ -2465,9 +2473,11 @@
 
       // 앱 후기 상세로 바로 들어가는 링크 (카톡의 버튼/본문 클릭 시 이동)
       // ?view= 로 진입하면 자동으로 읽기 전용 후기페이지가 열린다 (mode 파라미터 불필요)
-      const appUrl = 'https://kmeimei2017-max.github.io/Ra-Review/?view=' + trip.id;
+      // 🚨 링크에 싣는 값은 id 가 아니라 share_token 이다. id 는 알아내면 열리는 이름표라
+      //    링크를 안 받은 사람도 볼 수 있었다 → 009_share_token.sql
+      const appUrl = 'https://kmeimei2017-max.github.io/Ra-Review/?view=' + trip.share_token;
       // 밴드/일반 링크 붙여넣기용(OG 미리보기) — 카톡 SDK 미사용 시 폴백
-      const ogUrl = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.id + '&v=' + shortHash(trip.thumb_url || trip.id);
+      const ogUrl = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.share_token + '&v=' + shortHash(trip.thumb_url || trip.id);
 
       // 카드 내용 (지금 데이터로 자동 구성)
       const firstImage = (trip.photos || []).find(p => (p.type || 'image') === 'image');
@@ -2525,8 +2535,10 @@
     // 초기화
     (async () => {
       // 공유 링크 여부를 데이터 로딩 전에 먼저 판단 → 홈 화면 깜빡임 방지
-      const viewId = new URLSearchParams(location.search).get('view');
-      if (viewId) {
+      // ★ ?view= 에 실리는 값은 후기 id 가 아니라 share_token(32자 hex)이다.
+      //   id 는 이름표라 알아내면 열리지만, 토큰은 추측할 수 없다 → 009_share_token.sql
+      const viewToken = new URLSearchParams(location.search).get('view');
+      if (viewToken) {
         document.body.classList.add('view-mode'); // 홈 즉시 숨김
       }
 
@@ -2538,23 +2550,25 @@
       renderFeed();
 
       // 공유 링크로 들어온 경우: 해당 후기만 읽기 전용(후기페이지)으로 표시
-      if (viewId) {
-        let idx = trips.findIndex(t => t.id === viewId);
-        if (idx === -1) {
-          // 남의 후기 링크 — 내 피드에는 없으므로 단건으로 따로 가져온다.
+      if (viewToken) {
+        // 내 후기이거나 기본 후기면 피드에 이미 있다 — 토큰으로 찾는다(추가 조회 불필요)
+        let target = trips.find(t => t.share_token === viewToken);
+        if (!target) {
+          // 남의 후기 링크 — 내 피드에는 없으므로 토큰으로 단건만 가져온다.
           // ★ push(끝에 추가)여야 한다. 홈 좌우 스와이프가 trips[0]을 "내 최신 후기"로
           //   보기 때문에, 앞에 넣으면 남의 후기가 그 자리를 차지한다.
-          const shared = await loadTripById(viewId);
+          const shared = await loadTripByToken(viewToken);
           if (shared) {
             shared._external = true;
             trips.push(shared);
-            idx = trips.length - 1;
+            target = shared;
           }
         }
-        if (idx !== -1) {
-          viewTrip(viewId, 'review');
+        if (target) {
+          // viewTrip 은 계속 id 를 받는다 — 토큰은 링크에만 쓰인다
+          viewTrip(target.id, 'review');
         } else {
-          // 후기를 못 찾으면 홈으로 복귀
+          // 후기를 못 찾으면 홈으로 복귀 (옛 id 링크도 여기로 떨어진다)
           document.body.classList.remove('view-mode');
           setTimeout(showCamBubbleOnce, 800);
         }
