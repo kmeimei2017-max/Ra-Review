@@ -59,15 +59,6 @@
       --font-size: 22px;
       /* 키보드가 올라와도 실제로 보이는 화면 높이. syncAvail() 이 갱신한다 */
       --avail: 100vh;
-      /* 🚨 편집화면 사진 한 장의 높이 = 보이는 화면(--avail) − 후기칸 카드 몫 200px.
-         후기를 쓸 때 alignPhotoCard() 가 카드 윗변을 화면 맨 위에 맞추므로,
-         이 값이면 사진 하나 + 후기칸이 화면을 채우고 다음 사진은 화면 밖에 머문다.
-         200은 실측으로 잡은 안전범위 183~207의 가운데다(브라우저에서 재보고 정함):
-           183보다 작으면 후기칸 아래가 잘리고, 207보다 크면 다음 사진이 걸쳐 보인다.
-         후기칸 줄수·마이크 자리·카드 여백을 바꾸면 이 값도 다시 재야 한다.
-         ⚠️ 320px 상한 때문에 --avail 이 520을 넘으면 카드가 화면을 못 채워 다음 사진이 보인다.
-            폰에서 키보드가 올라오면 --avail 은 360~500이라 해당 없다(태블릿만 해당) */
-      --pf-photo-h: min(320px, calc(var(--avail) - 200px));
     }
 
     .app {
@@ -1218,17 +1209,35 @@
       flex-shrink: 0;
     }
 
-    /* 사진 높이는 --pf-photo-h 하나로 정한다(:root). 사진 하나 + 후기칸이 딱 한 화면 */
+    /* 평소(안 쓰고 있을 때) 사진 크기 — 목록을 훑기 좋은 정도 */
     .photo-form-group-image img,
     .photo-form-group-image video {
       width: auto;
       height: auto;
       max-width: 100%;
-      max-height: var(--pf-photo-h);
+      max-height: 320px;
       object-fit: contain;
       display: block;
     }
 
+    /* 🚨 후기를 쓰는 동안엔 카드 하나가 화면 하나를 정확히 채운다 → 다음 사진은 화면 밖.
+       ⚠️ 사진 높이를 '화면 − 후기칸 몇 px' 로 미리 계산하지 말 것. 후기칸 높이는 상황마다 다르다
+          — 마이크를 못 쓰는 폰에선 body.no-speech 로 42px 짧아진다(그래서 딱 그만큼 다음 사진이 보였다).
+          카드 높이만 못 박고 사진에게 '남는 높이를 다 먹어라'(flex:1) 하면 저절로 맞는다.
+       ⚠️ 빈 여백(padding)으로 밀어내지 말 것 — 검은 여백이 화면에 남는다.
+       ⚠️ 숨기기(visibility·opacity)도 금물 — 다음 후기칸을 한 번에 못 누른다.
+       18px = 아래로 남기는 여유. 카드(--avail − 18) + 카드 사이 24 > 화면 이라 다음 사진은 못 들어온다.
+       카드 윗변을 화면 맨 위에 맞추는 건 alignPhotoCard() 가 한다 */
+    #photoFormsContainer .form-section:focus-within .photo-form-group {
+      height: calc(var(--avail) - 18px);
+    }
+    /* 남는 높이는 사진칸이 아니라 여기가 흡수한다 — 사진칸을 늘리면 가로사진일 때
+       사진 아래 검은 자리가 생기고 번호 배지가 사진이 아니라 그 자리에 붙는다.
+       사진이 실제로 쓸 높이는 fitPhotoToScreen() 이 재서 넣는다 */
+    #photoFormsContainer .form-section:focus-within .photo-form-group-header {
+      flex: 1;
+      min-height: 0;
+    }
 
     /* "사진 1" 글자줄 대신 사진 안 좌하단에 붙는 번호 */
     .pf-badge {
@@ -2934,10 +2943,22 @@
     // 사진 하나 + 후기칸이 화면을 정확히 채우고 다음 사진은 화면 밖에 머문다.
     // ⚠️ 빈 여백(padding)으로 밀어내지 말 것 — 검은 여백이 화면에 남는다.
     // ⚠️ 숨기기(visibility·opacity)도 금물 — 다음 후기칸을 한 번에 못 누른다.
+    // 🚨 사진이 쓸 높이는 '계산'하지 말고 '재서' 넣는다. 후기칸 높이가 상황마다 다르다 —
+    // 마이크를 못 쓰는 폰은 body.no-speech 로 42px 짧아지고, 딱 그만큼 다음 사진이 보였다.
+    function fitPhotoToScreen(card) {
+      const vis = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      const mic = card.querySelector('.mic-wrap');
+      const media = card.querySelector('.photo-form-group-image img, .photo-form-group-image video');
+      if (!mic || !media) return;
+      // 18 = 화면 아래로 남기는 여유, 12 = 카드 padding·border, 10 = 사진과 후기칸 사이
+      media.style.maxHeight = Math.max(80, vis - 18 - mic.offsetHeight - 22) + 'px';
+    }
+
     function alignPhotoCard(input) {
       const card = input.closest('.form-section');
       const wc = document.querySelector('.write-content');
       if (!card || !wc) return;
+      fitPhotoToScreen(card);
       wc.scrollTop += card.getBoundingClientRect().top - wc.getBoundingClientRect().top;
     }
     function focusedPhotoInput() {
@@ -2949,6 +2970,13 @@
       alignPhotoCard(e.target);
       // 키보드가 올라오면 화면 높이가 줄고 사진도 줄어든다 — 그때 한 번 더 맞춘다
       setTimeout(() => { const a = focusedPhotoInput(); if (a) alignPhotoCard(a); }, 300);
+    });
+    // 다 쓰고 나오면 사진을 원래 크기(최대 320px)로 되돌린다
+    document.getElementById('photoFormsContainer').addEventListener('focusout', (e) => {
+      if (!e.target.classList.contains('form-input')) return;
+      const media = e.target.closest('.form-section')
+        .querySelector('.photo-form-group-image img, .photo-form-group-image video');
+      if (media) media.style.maxHeight = '';
     });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
