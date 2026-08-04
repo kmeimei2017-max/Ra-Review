@@ -1207,6 +1207,19 @@
       display: block;
     }
 
+    /* 🚨 후기를 쓰는 동안엔 그 카드 아래에 사진 한 장 높이만큼 빈자리를 만든다.
+       키보드가 올라오면 브라우저는 '입력칸이 보이게'만 스크롤한다 — 사진 크기를 아무리
+       맞춰도 카드가 위로 밀리면서 다음 사진이 화면에 딸려 올라왔다. 빈자리가 받쳐주면
+       입력칸이 화면 어디에 놓이든 다음 카드는 화면 밖에 머문다.
+       ⚠️ 숨기기(visibility·opacity)로 막지 말 것 — 다음 사진의 후기칸을 한 번에 못 누른다.
+       ⚠️ 스크롤 위치를 JS로 되돌리는 것도 금물 — 브라우저 기본 동작과 싸운다. */
+    #photoFormsContainer .form-section {
+      transition: padding-bottom 0.35s ease;
+    }
+    #photoFormsContainer .form-section:focus-within {
+      padding-bottom: calc(var(--avail) - 190px);
+    }
+
     /* "사진 1" 글자줄 대신 사진 안 좌하단에 붙는 번호 */
     .pf-badge {
       position: absolute;
