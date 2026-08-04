@@ -2,8 +2,11 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <!-- viewport-fit=cover: CSS가 쓰는 env(safe-area-inset-*)에 실제 값이 들어오게 한다(홈화면 앱 모드 노치 대응) -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- viewport-fit=cover: CSS가 쓰는 env(safe-area-inset-*)에 실제 값이 들어오게 한다(홈화면 앱 모드 노치 대응)
+       interactive-widget=resizes-content: 안드로이드 크롬이 키보드를 "화면을 미는 것"이 아니라
+       "화면을 줄이는 것"으로 처리한다. 밀면 편집화면 상단바가 사라지고 입력칸 아래로 다음 사진이 딸려 온다.
+       아이폰 사파리는 이 값을 무시하므로 .write-trip 의 height:var(--avail) 이 같은 일을 한다 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Ra-Review - 낚시 후기</title>
 
   <!-- 카톡/SNS 링크 미리보기 (Open Graph) -->
@@ -56,6 +59,15 @@
       --font-size: 22px;
       /* 키보드가 올라와도 실제로 보이는 화면 높이. syncAvail() 이 갱신한다 */
       --avail: 100vh;
+      /* 🚨 편집화면 사진 한 장의 높이 = 보이는 화면(--avail) − 후기칸 카드 몫 200px.
+         후기를 쓸 때 alignPhotoCard() 가 카드 윗변을 화면 맨 위에 맞추므로,
+         이 값이면 사진 하나 + 후기칸이 화면을 채우고 다음 사진은 화면 밖에 머문다.
+         200은 실측으로 잡은 안전범위 183~207의 가운데다(브라우저에서 재보고 정함):
+           183보다 작으면 후기칸 아래가 잘리고, 207보다 크면 다음 사진이 걸쳐 보인다.
+         후기칸 줄수·마이크 자리·카드 여백을 바꾸면 이 값도 다시 재야 한다.
+         ⚠️ 320px 상한 때문에 --avail 이 520을 넘으면 카드가 화면을 못 채워 다음 사진이 보인다.
+            폰에서 키보드가 올라오면 --avail 은 360~500이라 해당 없다(태블릿만 해당) */
+      --pf-photo-h: min(320px, calc(var(--avail) - 200px));
     }
 
     .app {
@@ -808,6 +820,13 @@
     /* 글쓰기 화면 */
     .write-trip {
       flex-direction: column;
+      /* 🚨 키보드가 올라오면 편집화면도 같이 줄어야 한다. 100vh 는 안 줄어서 브라우저가
+         화면을 통째로 위로 밀어버렸고(상단바가 사라지던 이유), 그때 입력칸 아래 빈자리로
+         다음 사진이 딸려 올라왔다. --avail 은 syncAvail() 이 채우는 '실제로 보이는 높이'.
+         ⚠️ .app 에는 걸지 말 것 — 아이폰은 주소창이 접힐 때마다 --avail 이 바뀌어서
+         메인·미리보기페이지가 스크롤할 때마다 출렁인다. 편집화면에만 건다 */
+      height: var(--avail);
+      flex: none;
     }
 
     .write-header {
@@ -817,6 +836,13 @@
       justify-content: center;
       padding: 16px;
       border-bottom: 1px solid var(--border-dark);
+    }
+
+    /* 글 쓰는 동안엔 여기 누를 게 없다 — 접어서 103px을 사진에 내준다.
+       키보드가 화면 절반을 먹는 동안 사진 한 장을 다 보여주려면 이만큼이 필요하다.
+       키보드를 내리면(포커스가 풀리면) 저장하기 버튼이 다시 나온다 */
+    .write-trip:focus-within .write-header {
+      display: none;
     }
 
     /* + / 자동저장 버튼 */
@@ -1192,33 +1218,17 @@
       flex-shrink: 0;
     }
 
-    /* 🚨 사진 높이 = 키보드가 먹고 남은 화면(--avail) − 후기칸 190px.
-       사진 하나 + 후기칸이 딱 한 화면을 채워서 다음 사진은 화면 밖에 머문다.
-       ⚠️ 사진을 더 줄이면 오히려 다음 사진이 올라온다 — 카드가 화면을 못 채우기 때문.
-       190은 후기칸(3줄+마이크 56)과 여백의 실측값이라 그 둘을 바꾸면 같이 바꿔야 한다.
-       --avail 은 syncAvail() 이 채운다 */
+    /* 사진 높이는 --pf-photo-h 하나로 정한다(:root). 사진 하나 + 후기칸이 딱 한 화면 */
     .photo-form-group-image img,
     .photo-form-group-image video {
       width: auto;
       height: auto;
       max-width: 100%;
-      max-height: min(320px, calc(var(--avail) - 190px));
+      max-height: var(--pf-photo-h);
       object-fit: contain;
       display: block;
     }
 
-    /* 🚨 후기를 쓰는 동안엔 그 카드 아래에 사진 한 장 높이만큼 빈자리를 만든다.
-       키보드가 올라오면 브라우저는 '입력칸이 보이게'만 스크롤한다 — 사진 크기를 아무리
-       맞춰도 카드가 위로 밀리면서 다음 사진이 화면에 딸려 올라왔다. 빈자리가 받쳐주면
-       입력칸이 화면 어디에 놓이든 다음 카드는 화면 밖에 머문다.
-       ⚠️ 숨기기(visibility·opacity)로 막지 말 것 — 다음 사진의 후기칸을 한 번에 못 누른다.
-       ⚠️ 스크롤 위치를 JS로 되돌리는 것도 금물 — 브라우저 기본 동작과 싸운다. */
-    #photoFormsContainer .form-section {
-      transition: padding-bottom 0.35s ease;
-    }
-    #photoFormsContainer .form-section:focus-within {
-      padding-bottom: calc(var(--avail) - 190px);
-    }
 
     /* "사진 1" 글자줄 대신 사진 안 좌하단에 붙는 번호 */
     .pf-badge {
@@ -2916,6 +2926,36 @@
     if (window.visualViewport) window.visualViewport.addEventListener('resize', syncAvail);
     window.addEventListener('resize', syncAvail);
     syncAvail();
+
+    // 🚨 후기칸을 누르면 그 카드의 윗변을 편집화면 맨 위에 맞춘다.
+    // 크롬 기본 동작은 '커서를 화면 한가운데' 놓는 것이라, 사진 위가 잘리면서 아래로
+    // 다음 사진이 딸려 올라온다. CSS scroll-margin-top 은 크롬이 무시한다(실측 확인).
+    // 사진 높이(--pf-photo-h)가 '보이는 화면 − 후기칸' 이라 윗변만 맞으면
+    // 사진 하나 + 후기칸이 화면을 정확히 채우고 다음 사진은 화면 밖에 머문다.
+    // ⚠️ 빈 여백(padding)으로 밀어내지 말 것 — 검은 여백이 화면에 남는다.
+    // ⚠️ 숨기기(visibility·opacity)도 금물 — 다음 후기칸을 한 번에 못 누른다.
+    function alignPhotoCard(input) {
+      const card = input.closest('.form-section');
+      const wc = document.querySelector('.write-content');
+      if (!card || !wc) return;
+      wc.scrollTop += card.getBoundingClientRect().top - wc.getBoundingClientRect().top;
+    }
+    function focusedPhotoInput() {
+      const a = document.activeElement;
+      return a && a.classList.contains('form-input') && a.closest('#photoFormsContainer') ? a : null;
+    }
+    document.getElementById('photoFormsContainer').addEventListener('focusin', (e) => {
+      if (!e.target.classList.contains('form-input')) return;
+      alignPhotoCard(e.target);
+      // 키보드가 올라오면 화면 높이가 줄고 사진도 줄어든다 — 그때 한 번 더 맞춘다
+      setTimeout(() => { const a = focusedPhotoInput(); if (a) alignPhotoCard(a); }, 300);
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        const a = focusedPhotoInput();
+        if (a) requestAnimationFrame(() => alignPhotoCard(a));
+      });
+    }
 
     refreshA2HSVisibility();
 
