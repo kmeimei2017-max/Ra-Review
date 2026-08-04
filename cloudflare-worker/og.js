@@ -17,7 +17,7 @@
 
 const SUPABASE_URL = "https://swiferlakcaeokzwlgyz.supabase.co";
 const ANON_KEY = "sb_publishable_RI46PspBesxDg9_Yg4fNkw_gXAhV_NG";
-const APP_URL = "https://kmeimei2017-max.github.io/Ra-Review/";
+const APP_URL = "https://ra-review.com/";
 const DEFAULT_IMAGE = APP_URL + "og-image.png";
 const DESCRIPTION = "후기를 공유합니다 🎣";
 

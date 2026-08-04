@@ -210,10 +210,12 @@
 - 배포 주소 (아래 코드블록에 마우스 올리면 복사 아이콘):
 
   ```text
-  https://kmeimei2017-max.github.io/Ra-Review/
+  https://ra-review.com/
   ```
 
   - 모바일에서 최신 화면을 볼 땐 뒤에 `?v=숫자`를 붙인다 (캐시 우회)
+  - 옛 주소(`kmeimei2017-max.github.io/Ra-Review/`)로 들어와도 **GitHub Pages가 새 도메인으로 넘겨준다** —
+    그래서 도메인을 바꿔도 이미 뿌린 링크는 안 깨진다(2026-08-04 Cloudflare Registrar에서 구입)
 - 로컬 확인: `npx http-server -p 8765 -c-1` 실행 후 <http://127.0.0.1:8765/index.html>
 - 더미 이미지:
 

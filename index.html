@@ -9,10 +9,10 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="라봉 낚시 후기">
   <meta property="og:description" content="바다낚시 후기를 사진과 함께 공유합니다 🎣">
-  <meta property="og:image" content="https://kmeimei2017-max.github.io/Ra-Review/og-image.png">
+  <meta property="og:image" content="https://ra-review.com/og-image.png">
   <meta property="og:image:width" content="940">
   <meta property="og:image:height" content="688">
-  <meta property="og:url" content="https://kmeimei2017-max.github.io/Ra-Review/">
+  <meta property="og:url" content="https://ra-review.com/">
   <meta name="twitter:card" content="summary_large_image">
 
   <meta name="theme-color" content="#0a0a0a">
@@ -2475,7 +2475,7 @@
       // ?view= 로 진입하면 자동으로 읽기 전용 후기페이지가 열린다 (mode 파라미터 불필요)
       // 🚨 링크에 싣는 값은 id 가 아니라 share_token 이다. id 는 알아내면 열리는 이름표라
       //    링크를 안 받은 사람도 볼 수 있었다 → 009_share_token.sql
-      const appUrl = 'https://kmeimei2017-max.github.io/Ra-Review/?view=' + trip.share_token;
+      const appUrl = 'https://ra-review.com/?view=' + trip.share_token;
       // 밴드/일반 링크 붙여넣기용(OG 미리보기) — 카톡 SDK 미사용 시 폴백
       const ogUrl = 'https://rabong-og.kmeimei2017.workers.dev/?id=' + trip.share_token + '&v=' + shortHash(trip.thumb_url || trip.id);
 
@@ -2486,7 +2486,7 @@
       const description = (firstNote ? firstNote.content : '').trim().slice(0, 100) || '후기를 공유합니다 🎣';
       const imageUrl = trip.thumb_url
         || (firstImage && firstImage.url)
-        || 'https://kmeimei2017-max.github.io/Ra-Review/og-image.png';
+        || 'https://ra-review.com/og-image.png';
 
       // ① 카카오 SDK 준비됨 → 카톡 공유 카드(원터치, 큰 카드 + 버튼)
       if (isKakaoReady()) {
