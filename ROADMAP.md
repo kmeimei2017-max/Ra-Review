@@ -82,6 +82,17 @@
 
 ## 완료
 
+- [x] **주소를 `ra-review.com` 으로 이전** (Cloudflare Registrar 구입 → GitHub Pages 연결)
+  - DNS: A 4개(185.199.108~111.153) + CNAME `www`, 전부 **`DNS only`**(프록시 켜면 GitHub 인증서 발급 실패)
+  - 고친 곳: `index.html` 4곳 · `cloudflare-worker/og.js` · `story.html` · GitHub Pages Custom domain + Enforce HTTPS
+  - 옛 주소로 들어와도 **GitHub Pages가 301로 넘겨준다** → 이미 뿌린 링크는 안 깨짐
+  - 🔥 **하루를 태운 함정: 카톡 공유카드가 계속 `github.io` 루트(404)로 갔다.**
+    카카오 콘솔의 **`제품 링크 관리 > 웹 도메인`** 이 옛 도메인이어서, 카드 링크가
+    **"기본 웹 도메인"으로 갈아치워진 것**(경로가 제외돼 저장되므로 루트가 된다).
+    앱 대표 도메인·JS SDK 도메인을 고쳐도 소용없었다 — **도메인 설정이 세 군데**다.
+    자세한 건 [KAKAO.md](KAKAO.md) 에 정리했다
+  - ⚠️ **카카오 카드는 "보낸 시점"의 설정이 박힌다.** 설정을 고쳐도 옛 카드는 안 고쳐지니
+    시험할 땐 **방금 만든 카드만** 눌러야 오진하지 않는다
 - [x] **공유 링크를 후기 아이디에서 "열쇠"로** (`009_share_token.sql` + `010_narrow_select.sql` 실행 완료)
   - 문제: 앱 화면엔 3건만 보여도 **anon 키로 REST를 직접 부르면 17건 전부**가 나왔다.
     링크에 후기 `id`가 실려 있었는데, id는 이름표일 뿐이라 알아내면 그대로 열렸다
