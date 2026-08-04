@@ -787,12 +787,13 @@
       width: max-content;
       max-width: calc(100vw - 48px);
       text-align: center;
-      padding: 16px 28px;
+      /* 예전(16px/16·28)의 두 배쯤 — 저장됐다는 확신이 들 만큼 크게 */
+      padding: 28px 44px;
       background: rgba(20, 20, 20, 0.92);
       color: #fff;
-      font-size: 16px;
+      font-size: 24px;
       font-weight: 600;
-      border-radius: 14px;
+      border-radius: 18px;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.25s ease, transform 0.25s ease;
@@ -2327,12 +2328,31 @@
       document.getElementById('loadingOverlay').classList.remove('active');
     }
 
-    // 저장 완료 토스트 (1.5초 후 자동 사라짐)
+    // 편집화면에서는 사진 썸네일 줄 한가운데에 띄운다 —
+    // 화면 정중앙은 큰 사진·캡션 위에 걸쳐 어디를 가리키는지 흐릿했다.
+    // 사진줄이 비어 있으면(높이 0) 기준으로 쓸 수 없으니 CSS 기본값인 화면 정중앙으로 되돌린다.
+    function placeToast(toast) {
+      const grid = document.getElementById('photoPreviewGrid');
+      const onWrite = document.getElementById('writePage').classList.contains('active');
+      if (onWrite && grid && grid.children.length) {
+        const r = grid.getBoundingClientRect();
+        toast.style.top = (r.top + r.height / 2) + 'px';
+        toast.style.left = (r.left + r.width / 2) + 'px';
+      } else {
+        toast.style.top = '';
+        toast.style.left = '';
+      }
+    }
+
+    // 저장 완료 토스트 (기본 1.5초 — 저장 알림은 3초로 길게 부른다)
+    let saveToastTimer = null;
     function showToast(message = '✓ 저장 완료!', duration = 1500) {
       const toast = document.getElementById('saveToast');
+      placeToast(toast);
       toast.textContent = message;
       toast.classList.add('active');
-      setTimeout(() => toast.classList.remove('active'), duration);
+      clearTimeout(saveToastTimer);
+      saveToastTimer = setTimeout(() => toast.classList.remove('active'), duration);
     }
 
     // 후기 저장 (신규 생성/기존 수정 공통) — editingTripId 유무로 갈리고,
@@ -2426,7 +2446,7 @@
     let autosavePending = false;
 
     // 버튼에 쓰이는 글자가 곧 상태 표시다 — 따로 알림을 띄우지 않는다
-    const AUTOSAVE_LABELS = { idle: '저장하기', saving: '저장 중…', saved: '저장완료', error: '저장 실패' };
+    const AUTOSAVE_LABELS = { idle: '저장하기', saving: '저장 중…', saved: '저장 완료', error: '저장 실패' };
 
     function setSaveStatus(state) {
       const btn = document.getElementById('autosaveBtn');
@@ -2499,13 +2519,14 @@
       await runAutosave();
       const btn = document.getElementById('autosaveBtn');
       if (!btn) return;
-      // 눌러서 저장했을 때만 크게 알린다 (자동저장은 라벨만 조용히 바뀐다)
+      // 눌러서 저장했을 때만 크게 알린다 (자동저장은 라벨만 조용히 바뀐다).
+      // 3초 — 저장됐다는 확신이 남을 만큼 머무른다.
       if (btn.classList.contains('saved')) {
-        showToast('✓ 저장 완료!');
+        showToast('✓ 저장 완료!', 3000);
       } else if (btn.classList.contains('idle')) {
         // 제목도 사진도 없으면 persistTrip 이 false 를 주고 idle 로 돌아온다.
         // 여기서 말해주지 않으면 "눌렀는데 아무 일도 안 일어난다"가 된다.
-        showToast('사진이나 제목을 먼저 넣어주세요');
+        showToast('사진이나 제목을 먼저 넣어주세요', 3000);
       }
     }
 
