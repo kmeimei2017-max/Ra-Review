@@ -54,6 +54,8 @@
       --text-muted: #999999;
       --border-dark: #333333;
       --font-size: 22px;
+      /* 키보드가 올라와도 실제로 보이는 화면 높이. syncAvail() 이 갱신한다 */
+      --avail: 100vh;
     }
 
     .app {
@@ -1100,21 +1102,24 @@
       pointer-events: none;            /* 이미지 자체의 길게누르기/드래그 방지 */
     }
 
+    /* 번호는 흰 원 + 검정 숫자, 삭제는 빨간 원 ✕ — 색으로 역할을 갈라놔야
+       작은 썸네일에서도 "지우는 버튼"을 헷갈리지 않는다. */
     .photo-num-badge {
       position: absolute;
-      top: 4px;
-      left: 4px;
-      min-width: 22px;
-      height: 22px;
-      padding: 0 6px;
-      background: rgba(0, 0, 0, 0.65);
-      color: #fff;
-      font-size: 13px;
-      font-weight: 700;
-      border-radius: 11px;
+      top: 5px;
+      left: 5px;
+      min-width: 30px;
+      height: 30px;
+      padding: 0 8px;
+      background: #fff;
+      color: #0a0a0a;
+      font-size: 19px;
+      font-weight: 800;
+      border-radius: 15px;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
     }
 
     /* 드래그 중인 사진 표시 */
@@ -1135,17 +1140,27 @@
       position: absolute;
       top: 4px;
       right: 4px;
-      width: 28px;
-      height: 28px;
-      background: rgba(0, 0, 0, 0.6);
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      background: #e5484d;
       color: white;
-      border: none;
+      border: 2px solid #fff;
       border-radius: 50%;
-      font-size: 18px;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+    /* 손가락이 닿는 범위를 버튼 밖으로 넓혀 실제 터치영역을 44px 이상으로 */
+    .photo-remove-btn::after {
+      content: '';
+      position: absolute;
+      inset: -9px;
     }
 
     .photo-form-group {
@@ -1161,30 +1176,54 @@
     .photo-form-group-header {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      margin-bottom: 16px;
-      align-items: center;
+      margin-bottom: 10px;
+      align-items: flex-start;   /* 사진을 왼쪽 끝에 붙인다 */
     }
 
+    /* 사진 크기만큼만 차지한다 — 예전처럼 고정 높이 상자에 넣으면 세로사진 양옆에
+       검은 여백이 생겨서 번호 배지가 사진이 아니라 여백 모서리에 붙는다 */
     .photo-form-group-image {
-      width: 100%;
-      height: 400px;
+      position: relative;
+      width: auto;
+      max-width: 100%;
+      height: auto;
       border-radius: 8px;
       overflow: hidden;
       flex-shrink: 0;
     }
 
-    .photo-form-group-image img {
-      width: 100%;
-      height: 100%;
+    /* 🚨 사진 높이 = 키보드가 먹고 남은 화면(--avail) − 후기칸 190px.
+       사진 하나 + 후기칸이 딱 한 화면을 채워서 다음 사진은 화면 밖에 머문다.
+       ⚠️ 사진을 더 줄이면 오히려 다음 사진이 올라온다 — 카드가 화면을 못 채우기 때문.
+       190은 후기칸(3줄+마이크 56)과 여백의 실측값이라 그 둘을 바꾸면 같이 바꿔야 한다.
+       --avail 은 syncAvail() 이 채운다 */
+    .photo-form-group-image img,
+    .photo-form-group-image video {
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: min(320px, calc(var(--avail) - 190px));
       object-fit: contain;
+      display: block;
     }
 
-    .photo-form-group-info {
-      flex: 1;
-      font-size: 14px;
-      color: var(--text-muted);
-      text-align: center;
+    /* "사진 1" 글자줄 대신 사진 안 좌하단에 붙는 번호 */
+    .pf-badge {
+      position: absolute;
+      left: 8px;
+      bottom: 8px;
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
+      background: #fff;
+      color: #0a0a0a;
+      font-size: 20px;
+      font-weight: 800;
+      border-radius: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
     }
 
     @media (max-width: 600px) {
@@ -2233,7 +2272,7 @@
               <span class="pv-play">▶</span>
               ${sec ? `<span class="pv-dur">🎬 ${sec}</span>` : ''}
               <span class="photo-num-badge">${index + 1}</span>
-              <button class="photo-remove-btn" onclick="removePhoto(${index})">−</button>
+              <button class="photo-remove-btn" onclick="removePhoto(${index})" aria-label="사진 삭제">✕</button>
             </div>
           `;
         }
@@ -2241,7 +2280,7 @@
           <div class="photo-preview-item">
             <img src="${item.preview}" alt="선택된 사진 ${index + 1}" loading="lazy" decoding="async" draggable="false">
             <span class="photo-num-badge">${index + 1}</span>
-            <button class="photo-remove-btn" onclick="removePhoto(${index})">−</button>
+            <button class="photo-remove-btn" onclick="removePhoto(${index})" aria-label="사진 삭제">✕</button>
           </div>
         `;
       }).join('');
@@ -2271,7 +2310,10 @@
         delay: 150,             // 터치 시 150ms 눌러야 드래그 시작 → 짧은 스와이프는 스크롤로 통과
         delayOnTouchOnly: true, // 마우스는 그대로 즉시 드래그, 터치에서만 delay 적용
         touchStartThreshold: 5, // delay 대기 중 5px 넘게 움직이면 스크롤로 간주해 드래그 취소
-        filter: '.photo-remove-btn', // − 버튼은 드래그 안 됨
+        filter: '.photo-remove-btn', // ✕ 버튼은 드래그 안 됨
+        // 🚨 아이폰에서 삭제가 안 되던 원인. 기본값(true)이면 filter에 걸린 요소의
+        // touchstart를 preventDefault 해버리는데, iOS는 그러면 click 자체를 안 만든다.
+        preventOnFilter: false,
         onEnd: (evt) => {
           if (evt.oldIndex === evt.newIndex) return;
           // 끌어온 사진을 새 위치에 끼워넣고 나머지는 밀어냄
@@ -2288,9 +2330,11 @@
       const html = selectedPhotos.map((item, index) => {
         const isVideo = item.type === 'video';
         const thumb = isVideo
-          ? `<video src="${item.preview}" muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>`
+          ? `<video src="${item.preview}" muted playsinline preload="metadata"></video>`
           : `<img src="${item.preview}" alt="사진 ${index + 1}" loading="lazy" decoding="async">`;
-        const label = isVideo ? `🎬 영상 ${index + 1}` : `사진 ${index + 1}`;
+        const badge = isVideo
+          ? `<span class="pf-badge">🎬 ${index + 1}</span>`
+          : `<span class="pf-badge">${index + 1}</span>`;
         const ph = isVideo ? '이 영상에 대한 설명을 적어주세요...' : '이 사진에 대한 후기를 적어주세요...';
         return `
         <div class="form-section">
@@ -2298,9 +2342,7 @@
             <div class="photo-form-group-header">
               <div class="photo-form-group-image">
                 ${thumb}
-              </div>
-              <div class="photo-form-group-info">
-                ${label}
+                ${badge}
               </div>
             </div>
             <div class="mic-wrap">
@@ -2851,6 +2893,16 @@
         navigator.serviceWorker.register('sw.js').catch((e) => console.log('SW 등록 실패:', e));
       });
     }
+
+    // 편집화면 사진 높이의 기준값(--avail) — 키보드가 올라와도 실제로 보이는 높이.
+    // 100vh·100dvh 는 아이폰에서 키보드가 올라와도 줄지 않는다. visualViewport 만 줄어든다.
+    function syncAvail() {
+      const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      document.documentElement.style.setProperty('--avail', h + 'px');
+    }
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', syncAvail);
+    window.addEventListener('resize', syncAvail);
+    syncAvail();
 
     refreshA2HSVisibility();
 
