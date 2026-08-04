@@ -3018,6 +3018,29 @@
         if (ignoreWriteScroll) return;
         if (dy < -4 || y <= 4) writePageEl.classList.remove('writing');
       }, { passive: true });
+
+      // 🚨 화면을 밀면 키보드를 내린다 — 키보드가 화면 절반을 먹은 채로는 고칠 사진을 찾아
+      // 오르내리기가 어렵다. blur → focusout 이라 상단바도 같이 돌아온다.
+      // ⚠️ scroll 이벤트로 하지 말 것. 키보드가 올라오는 동안 브라우저가 스스로 스크롤하는데
+      //    (포커스 스크롤 + 키보드 애니메이션) 그걸 '사용자가 밀었다'로 읽으면
+      //    키보드가 뜨자마자 도로 닫힌다. 손가락이 움직인 것만이 확실한 신호다.
+      let touchStartY = 0;
+      let touchDismissed = false;
+      writeContentEl.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        touchDismissed = false;
+      }, { passive: true });
+      writeContentEl.addEventListener('touchmove', (e) => {
+        if (touchDismissed) return;
+        if (Math.abs(e.touches[0].clientY - touchStartY) < 12) return;   // 잔손떨림 무시
+        touchDismissed = true;
+        dismissWriteKeyboard();
+      }, { passive: true });
+      writeContentEl.addEventListener('wheel', dismissWriteKeyboard, { passive: true });
+    }
+    function dismissWriteKeyboard() {
+      const a = document.activeElement;
+      if (a && a.classList.contains('form-input') && writeContentEl.contains(a)) a.blur();
     }
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
