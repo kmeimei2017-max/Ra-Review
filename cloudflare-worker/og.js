@@ -1,4 +1,4 @@
-// 라리뷰 - 카톡/SNS 동적 미리보기(Open Graph) Cloudflare Worker
+// Ra-Review - 카톡/SNS 동적 미리보기(Open Graph) Cloudflare Worker
 //
 // 동작: 친구가 받은 링크(.../?id=공유토큰)를 카톡 크롤러가 열면
 //       해당 후기의 대표 사진/제목으로 OG 태그를 만들어 응답하고,
@@ -18,7 +18,7 @@
 const SUPABASE_URL = "https://swiferlakcaeokzwlgyz.supabase.co";
 const ANON_KEY = "sb_publishable_RI46PspBesxDg9_Yg4fNkw_gXAhV_NG";
 const APP_URL = "https://ra-review.com/";
-const DEFAULT_IMAGE = APP_URL + "og-image.png";
+const DEFAULT_IMAGE = APP_URL + "og-image.jpg";
 const DESCRIPTION = "후기를 공유합니다 🎣";
 
 function esc(s) {
@@ -35,7 +35,7 @@ export default {
     const token = url.searchParams.get("id"); // 값은 share_token (이름만 예전 그대로)
     const appLink = APP_URL + (token ? "?view=" + encodeURIComponent(token) : "");
 
-    let title = "라리뷰 낚시 후기";
+    let title = "Ra-Review 낚시 후기";
     let image = DEFAULT_IMAGE;
 
     if (token) {
@@ -86,7 +86,7 @@ export default {
 </head>
 <body>
 <script>location.replace(${JSON.stringify(appLink)});</script>
-<a href="${esc(appLink)}">라리뷰 후기 보러가기</a>
+<a href="${esc(appLink)}">Ra-Review 후기 보러가기</a>
 </body>
 </html>`;
 

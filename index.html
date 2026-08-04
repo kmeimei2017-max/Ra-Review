@@ -2,21 +2,31 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rabong - 낚시 후기</title>
+  <!-- viewport-fit=cover: CSS가 쓰는 env(safe-area-inset-*)에 실제 값이 들어오게 한다(홈화면 앱 모드 노치 대응) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Ra-Review - 낚시 후기</title>
 
   <!-- 카톡/SNS 링크 미리보기 (Open Graph) -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="라봉 낚시 후기">
-  <meta property="og:description" content="바다낚시 후기를 사진과 함께 공유합니다 🎣">
-  <meta property="og:image" content="https://ra-review.com/og-image.png">
-  <meta property="og:image:width" content="940">
-  <meta property="og:image:height" content="688">
+  <meta property="og:title" content="Ra-Review">
+  <meta property="og:description" content="사진 몇 장이면 끝, 다양하게 사용하시면 됩니다.">
+  <meta property="og:image" content="https://ra-review.com/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:url" content="https://ra-review.com/">
   <meta name="twitter:card" content="summary_large_image">
 
   <meta name="theme-color" content="#0a0a0a">
   <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- 홈 화면에 추가(앱처럼 쓰기) — 아이콘/이름/전체화면 -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  <!-- iOS는 manifest의 icons를 안 본다. 이게 없으면 홈 화면 아이콘이 '화면 스크린샷'으로 들어간다 -->
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ra-Review">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -223,31 +233,98 @@
     .profile-fab img { width: 100%; height: 100%; object-fit: cover; }
     .profile-fab svg { width: 30px; height: 30px; }
 
-    /* 프로필 시트 — 닉네임 + 로그아웃 (버튼 위로 잔잔하게 떠오름) */
+    /* 프로필 시트 — 내 계정 + 메뉴 (버튼 위로 잔잔하게 떠오름).
+       앞으로 항목이 늘어날 자리다(후기방 진입·유료회원 가입·프로필 사진 변경 등).
+       그래서 폭을 넉넉히 잡고, 길어지면 화면 밖으로 넘치는 대신 안에서 스크롤되게 한다. */
     .profile-sheet {
       position: fixed;
       bottom: 110px;
       right: 30px;
-      min-width: 160px;
-      max-width: 220px;
-      padding: 12px;
+      width: 268px;
+      max-width: calc(100vw - 48px);
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+      padding: 14px;
       background: var(--bg-card);
       border: 1px solid var(--border-dark);
-      border-radius: 12px;
+      border-radius: 14px;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
       visibility: hidden;
       opacity: 0;
       transform: translateY(6px);
       transition: opacity 0.28s ease, transform 0.28s ease, visibility 0.28s;
-      z-index: 61;
+      /* FAB 스택 위에 온전히 떠야 한다. 글쓰기 .fab 만 z-index:100 이라
+         예전 값(61)으로는 시트가 길어지면 글쓰기 버튼에 가려졌다.
+         (안내 카드 .mic-onboard-overlay 는 200 이므로 시트 위에 그대로 뜬다) */
+      z-index: 120;
     }
     .profile-sheet.show { visibility: visible; opacity: 1; transform: translateY(0); }
-    .profile-sheet .ps-name {
+
+    /* 머리: 프로필 사진 + 닉네임.
+       사진 자리를 지금 만들어 둔다 — 나중에 내 사진으로 바꾸면
+       공유카드를 받은 사람이 "아, 이 사람 후기구나" 알아보게 하려는 자리다. */
+    .profile-sheet .ps-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 12px;
       margin-bottom: 10px;
+      border-bottom: 1px solid var(--border-dark);
+    }
+    .profile-sheet .ps-avatar {
+      flex: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+    }
+    .profile-sheet .ps-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-sheet .ps-avatar svg { width: 22px; height: 22px; }
+    .profile-sheet .ps-name {
+      flex: 1;
+      min-width: 0;
       font-size: 15px;
       font-weight: 700;
       color: var(--text-light);
-      word-break: break-all;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 메뉴 — 항목을 여기에 계속 추가하면 된다 */
+    .profile-sheet .ps-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .profile-sheet .ps-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-dark);
+      border-radius: 10px;
+      background: none;
+      color: var(--text-light);
+      font-size: 15px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .profile-sheet .ps-item:active { transform: scale(0.97); }
+    /* 항목 앞 아이콘 — 홈 화면에 추가는 실제 앱 아이콘을 쓴다("이게 생깁니다"를 그림으로) */
+    .profile-sheet .ps-item-ico {
+      flex: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 22.5%;
+      background: #fff;
     }
     .profile-sheet .ps-logout {
       width: 100%;
@@ -510,6 +587,72 @@
       font-weight: 700;
       cursor: pointer;
     }
+    /* 보조 버튼(나중에) — 위 온보딩 카드와 공용 */
+    .ob-btn-ghost {
+      width: 100%;
+      margin-top: 8px;
+      padding: 11px;
+      border: none;
+      border-radius: 10px;
+      background: none;
+      color: var(--text-muted);
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    /* ===== 홈 화면에 추가 안내 카드 ===== */
+    /* 오버레이/카드는 위 .mic-onboard-* 를 그대로 재사용하고, 안쪽만 여기서 꾸민다 */
+    .a2hs-app-ico {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 14px;
+      border-radius: 22.5%;           /* iOS 홈 화면 아이콘과 같은 라운딩 */
+      background: #fff;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+    }
+    .a2hs-sub {
+      margin: -8px 0 18px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+    .a2hs-steps { margin: 0 0 18px; text-align: left; }
+    .a2hs-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      font-size: 15px;
+      line-height: 1.45;
+      color: var(--text-light);
+      border-top: 1px solid var(--border-dark);
+    }
+    .a2hs-step:first-child { border-top: none; }
+    .a2hs-num {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* 본문 속 아이콘(공유 버튼 등) — 글자 사이에 자연스럽게 앉게 */
+    .a2hs-ico {
+      display: inline-block;
+      width: 19px;
+      height: 19px;
+      vertical-align: -4px;
+      margin: 0 1px;
+      fill: currentColor;
+    }
+
+    /* 이미 설치됐거나(standalone) 설치가 불가능한 환경이면 항목 자체를 감춘다 */
+    body.a2hs-off .ps-a2hs { display: none; }
 
     /* 제목칸은 flex 레이아웃이라 래퍼도 늘어나야 함 */
     .title-row .mic-wrap { flex: 1; }
@@ -1132,7 +1275,17 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
       </button>
       <div class="profile-sheet" id="profileSheet">
-        <div class="ps-name" id="psName"></div>
+        <div class="ps-head">
+          <div class="ps-avatar" id="psAvatar"></div>
+          <div class="ps-name" id="psName"></div>
+        </div>
+        <!-- 메뉴 — 앞으로 항목을 여기에 추가한다(후기방 진입·유료회원 가입 등) -->
+        <div class="ps-menu">
+          <button class="ps-item ps-a2hs" onclick="onA2HSTap()">
+            <img class="ps-item-ico" src="icon-192.png" alt="">
+            <span>홈 화면에 추가</span>
+          </button>
+        </div>
         <button class="ps-logout" onclick="kakaoLogout()">로그아웃</button>
       </div>
       <div class="cam-bubble" id="camBubble">세로 <b>9:16</b>으로 찍으면 깔끔해요</div>
@@ -1249,7 +1402,7 @@
     function isAdmin()        { return !!(myProfile && myProfile.is_admin); }
     function isBlocked()      { return !!(myProfile && myProfile.is_blocked); }
     function isMine(trip)     { return !!(currentUser && trip && trip.author_id === currentUser.id); }
-    // locked = 첫 사용자를 위한 안내 후기(설명서·라리뷰). 가입 시 복사돼도 잠김이 그대로 따라온다.
+    // locked = 첫 사용자를 위한 안내 후기(설명서·Ra-Review). 가입 시 복사돼도 잠김이 그대로 따라온다.
     // 잠금이 숨기는 건 보내기·삭제 버튼(드로어)뿐이고, 좌우 스와이프 이동은 그대로 둔다 —
     // 드로어가 통째로 숨는 화면이라 이동까지 막으면 좌스와이프가 무반응이 되고,
     // 관리자가 앱에서 안내 문구를 고칠 방법도 사라진다.
@@ -1267,9 +1420,12 @@
 
       if (currentUser) {
         btn.innerHTML = avatar ? `<img src="${avatar}" alt="">` : PROFILE_ICON_SVG;
-        btn.setAttribute('aria-label', `${name || '내 계정'} · 눌러서 로그아웃`);
+        btn.setAttribute('aria-label', `${name || '내 계정'} · 눌러서 계정 메뉴`);
         const nameEl = document.getElementById('psName');
         if (nameEl) nameEl.textContent = name || '로그인됨';
+        // 시트 머리의 프로필 사진 — 지금은 카카오 사진, 나중에 내 사진으로 바꿀 자리
+        const avaEl = document.getElementById('psAvatar');
+        if (avaEl) avaEl.innerHTML = avatar ? `<img src="${avatar}" alt="">` : PROFILE_ICON_SVG;
       } else {
         btn.innerHTML = PROFILE_ICON_SVG;
         btn.setAttribute('aria-label', '카카오로 로그인');
@@ -2482,11 +2638,11 @@
       // 카드 내용 (지금 데이터로 자동 구성)
       const firstImage = (trip.photos || []).find(p => (p.type || 'image') === 'image');
       const firstNote = (trip.photos || []).find(p => p.content && p.content.trim());
-      const title = trip.caption || '라봉 낚시 후기';
+      const title = trip.caption || 'Ra-Review';
       const description = (firstNote ? firstNote.content : '').trim().slice(0, 100) || '후기를 공유합니다 🎣';
       const imageUrl = trip.thumb_url
         || (firstImage && firstImage.url)
-        || 'https://ra-review.com/og-image.png';
+        || 'https://ra-review.com/og-image.jpg';
 
       // ① 카카오 SDK 준비됨 → 카톡 공유 카드(원터치, 큰 카드 + 버튼)
       if (isKakaoReady()) {
@@ -2531,6 +2687,143 @@
       onSwipeLeft: () => resumePreview(),
       onSwipeRight: () => resumeEditTrip(),
     });
+
+    // ===== 홈 화면에 추가 (앱처럼 쓰기) =====
+    // 이 앱은 웹앱이지만 홈 화면에 두면 주소창 없이 전체화면으로 열린다.
+    // ★ 자동 팝업은 두지 않는다. 홈 화면에 둘지는 몇 번 써보고 "계속 쓰겠다"고
+    //   마음먹은 뒤에 정하는 일이라, 먼저 들이미는 건 마찰만 된다.
+    //   진입로는 프로필 시트 한 곳뿐이고, 사용자가 찾아왔을 때만 안내한다.
+    let a2hsPrompt = null; // 안드로이드 크롬이 주는 설치 프롬프트 보관
+
+    // 이미 홈 화면 앱으로 실행 중인가
+    function isStandaloneApp() {
+      return window.matchMedia('(display-mode: standalone)').matches
+          || window.matchMedia('(display-mode: fullscreen)').matches
+          || window.navigator.standalone === true; // iOS
+    }
+
+    function isIOSDevice() {
+      const ua = navigator.userAgent;
+      // iPadOS 13+ 는 데스크톱 사파리로 위장하므로 터치 개수로 가려낸다
+      return /iPad|iPhone|iPod/.test(ua)
+          || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    // 카톡·밴드·인스타 등 인앱 브라우저 — 여기선 홈 화면 추가가 아예 불가능하다.
+    // ★ 이 앱의 주 유입 경로가 카톡 링크라 이 분기가 실제로 제일 많이 걸린다.
+    //   빼먹으면 "눌렀는데 아무 일도 안 일어남"이 된다.
+    function isInAppBrowser() {
+      return /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|FB_IAB|Line\/|DaumApps|; ?wv\)/i.test(navigator.userAgent);
+    }
+
+    function isMobileLike() {
+      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || !!a2hsPrompt;
+    }
+
+    // 안내를 보여줄 수 있는 상황인가 (프로필 시트 항목 표시 여부와 동일)
+    function canOfferA2HS() {
+      return !isStandaloneApp() && isMobileLike();
+    }
+
+    function refreshA2HSVisibility() {
+      document.body.classList.toggle('a2hs-off', !canOfferA2HS());
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();          // 크롬 기본 배너를 막고 우리 타이밍에 띄운다
+      a2hsPrompt = e;
+      refreshA2HSVisibility();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      a2hsPrompt = null;
+      refreshA2HSVisibility();  // 설치되면 시트 항목이 사라진다
+      showToast('홈 화면에 추가됐어요 🎣');
+    });
+
+    function onA2HSTap() {
+      hideProfileSheet();
+      showA2HSCard();
+    }
+
+    // 상황별 안내 카드 — 프로필 시트에서 사용자가 직접 눌렀을 때만 열린다.
+    function showA2HSCard() {
+      const SHARE_SVG = '<svg class="a2hs-ico" viewBox="0 0 24 24"><path d="M12 2 8.5 5.5 9.9 6.9 11 5.8V15h2V5.8l1.1 1.1 1.4-1.4L12 2zM5 10v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2h-3v2h3v10H7V10h3V8H7c-1.1 0-2 .9-2 2z"/></svg>';
+      const PLUS_SVG  = '<svg class="a2hs-ico" viewBox="0 0 24 24"><path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"/></svg>';
+      const MENU_SVG  = '<svg class="a2hs-ico" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>';
+
+      const lead = '홈 화면에 추가';
+      const sub  = '설치 없이 아이콘만 생겨요.<br>주소창 없이 <b>앱처럼 전체화면</b>으로 열려요.';
+
+      let body, mainLabel, onMain;
+
+      if (isInAppBrowser()) {
+        // 카톡 안에서는 불가능 — 밖으로 나가는 길부터 알려준다
+        body = `
+          <div class="a2hs-steps">
+            <div class="a2hs-step"><span class="a2hs-num">1</span><span>오른쪽 아래 ${MENU_SVG} 를 눌러<br><b>다른 브라우저로 열기</b></span></div>
+            <div class="a2hs-step"><span class="a2hs-num">2</span><span>열린 브라우저에서 <b>홈 화면에 추가</b></span></div>
+          </div>`;
+        mainLabel = '알겠어요';
+        onMain = null;
+      } else if (a2hsPrompt) {
+        // 안드로이드 크롬 — 원터치
+        body = '';
+        mainLabel = '홈 화면에 추가';
+        onMain = async () => {
+          const p = a2hsPrompt;
+          a2hsPrompt = null;      // 프롬프트는 1회용
+          refreshA2HSVisibility();
+          try { await p.prompt(); } catch (_e) {}
+        };
+      } else if (isIOSDevice()) {
+        // 아이폰 — 사파리 공유 시트를 거쳐야 한다 (자동 프롬프트가 없다)
+        body = `
+          <div class="a2hs-steps">
+            <div class="a2hs-step"><span class="a2hs-num">1</span><span>아래 ${SHARE_SVG} <b>공유</b> 버튼을 누르고</span></div>
+            <div class="a2hs-step"><span class="a2hs-num">2</span><span>${PLUS_SVG} <b>홈 화면에 추가</b>를 고르세요</span></div>
+          </div>`;
+        mainLabel = '알겠어요';
+        onMain = null;
+      } else {
+        // 안드로이드인데 프롬프트가 아직 없는 경우(삼성 인터넷·파이어폭스 등)
+        body = `
+          <div class="a2hs-steps">
+            <div class="a2hs-step"><span class="a2hs-num">1</span><span>브라우저 ${MENU_SVG} <b>메뉴</b>를 누르고</span></div>
+            <div class="a2hs-step"><span class="a2hs-num">2</span><span>${PLUS_SVG} <b>홈 화면에 추가</b>(앱 설치)를 고르세요</span></div>
+          </div>`;
+        mainLabel = '알겠어요';
+        onMain = null;
+      }
+
+      const ov = document.createElement('div');
+      ov.className = 'mic-onboard-overlay';
+      ov.innerHTML = `
+        <div class="mic-onboard-card">
+          <img class="a2hs-app-ico" src="icon-192.png" alt="">
+          <p class="ob-lead">${lead}</p>
+          <p class="a2hs-sub">${sub}</p>
+          ${body}
+          <button type="button" class="ob-btn">${mainLabel}</button>
+          <button type="button" class="ob-btn-ghost">닫기</button>
+        </div>`;
+      document.body.appendChild(ov);
+
+      ov.querySelector('.ob-btn').addEventListener('click', () => {
+        ov.remove();
+        if (onMain) onMain();
+      });
+      ov.querySelector('.ob-btn-ghost').addEventListener('click', () => ov.remove());
+    }
+
+    // 서비스워커 — 크롬 설치 프롬프트의 전제 조건. 캐시는 오프라인 폴백만 한다.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((e) => console.log('SW 등록 실패:', e));
+      });
+    }
+
+    refreshA2HSVisibility();
 
     // 초기화
     (async () => {
