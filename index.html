@@ -1126,9 +1126,18 @@
       transform: scale(0.96);
     }
     .photo-preview-item.armed {
-      transform: scale(1.08);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.65);
+      transform: scale(1.12);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.7);
       z-index: 2;
+    }
+
+    /* 🚨 드래그 중 손가락을 따라다니는 복제본에는 transition 이 붙으면 안 된다.
+       Sortable 이 매 프레임 transform 으로 복제본을 옮기는데 거기에 0.18s 가 걸리면
+       사진이 손가락을 뒤늦게 쫓아온다 — 실제로는 옮겨졌는데 안 움직인 것처럼 보인다.
+       sortable-fallback = forceFallback 복제본, sortable-drag = 드래그 중 원본 */
+    .photo-preview-item.sortable-fallback,
+    .photo-preview-item.sortable-drag {
+      transition: none;
     }
 
     .photo-preview-item img {
@@ -2375,7 +2384,10 @@
         item.classList.add('pressing');
         timer = setTimeout(() => {
           item.classList.replace('pressing', 'armed');
-          if (navigator.vibrate) navigator.vibrate(15);      // 안드로이드만 — 아이폰엔 이 API가 없다
+          // ⚠️ 안드로이드 진동은 세기를 못 정하고 길이만 정한다 — 길수록 세게 느껴진다.
+          // 40ms면 "툭" 하고 확실히 걸린다(15ms는 약해서 못 느꼈다). 더 올리면 알림 진동처럼 된다.
+          // 아이폰엔 웹 진동 API 자체가 없어서 움직임만 보인다
+          if (navigator.vibrate) navigator.vibrate(40);
         }, PHOTO_DRAG_DELAY);
       }, { passive: true });
       grid.addEventListener('touchmove', (e) => {
