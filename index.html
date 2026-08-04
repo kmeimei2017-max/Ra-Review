@@ -7,7 +7,7 @@
        "화면을 줄이는 것"으로 처리한다. 밀면 편집화면 상단바가 사라지고 입력칸 아래로 다음 사진이 딸려 온다.
        아이폰 사파리는 이 값을 무시하므로 .write-trip 의 height:var(--avail) 이 같은 일을 한다 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-  <title>Ra-Review - 낚시 후기</title>
+  <title>Ra-Review - 사진으로 남기는 이야기</title>
 
   <!-- 카톡/SNS 링크 미리보기 (Open Graph) -->
   <meta property="og:type" content="website">
@@ -1425,7 +1425,8 @@
         <div class="form-section">
           <label class="form-label">제목</label>
           <div class="mic-wrap">
-            <textarea id="captionInput" class="form-input" placeholder="예: 동해호 광어 대박! (2026.06.17 후포항)" rows="3" onchange="scheduleAutosave()"></textarea>
+            <!-- 예시를 여러 주제로 늘어놓는다 — 하나만 두면 그 주제의 앱으로 오해한다(예전 낚시 예시가 그랬다) -->
+            <textarea id="captionInput" class="form-input" placeholder="예: 런던 3박4일 · 내가 만든 케이크 · 이케아 조립 설명서 · 반려견 산책" rows="3" onchange="scheduleAutosave()"></textarea>
             <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력"><svg class="mic-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg></button>
           </div>
         </div>
@@ -2370,7 +2371,8 @@
         const badge = isVideo
           ? `<span class="pf-badge">🎬 ${index + 1}</span>`
           : `<span class="pf-badge">${index + 1}</span>`;
-        const ph = isVideo ? '이 영상에 대한 설명을 적어주세요...' : '이 사진에 대한 후기를 적어주세요...';
+        // "후기"를 빼서 주제를 안 가린다 — 낚시 전용이 아니라 아무 이야기나 쓰는 앱이다
+        const ph = isVideo ? '이 영상 이야기를 적어주세요...' : '이 사진 이야기를 적어주세요...';
         return `
         <div class="form-section">
           <div class="photo-form-group">
