@@ -2779,8 +2779,16 @@
       let body, mainLabel, onMain;
 
       if (isInAppBrowser()) {
-        // 카톡 안에서는 불가능 — 밖으로 나가는 길부터 알려준다
-        body = `
+        // 카톡 안에서는 불가능 — 밖으로 나가는 길부터 알려준다.
+        // 🚨 나가는 방법이 기기마다 다르다. 아이폰 카톡에는 '다른 브라우저로 열기'가
+        //    아예 없어서 공유 시트를 거쳐야 하고, 그만큼 단계가 하나 더 늘어난다.
+        //    안드로이드 문구를 아이폰에 그대로 보여주면 없는 버튼을 가리키게 된다.
+        body = isIOSDevice() ? `
+          <div class="a2hs-steps">
+            <div class="a2hs-step"><span class="a2hs-num">1</span><span>아래 ${SHARE_SVG} <b>공유</b> 버튼을 누르고</span></div>
+            <div class="a2hs-step"><span class="a2hs-num">2</span><span>목록에서 <b>Safari로 열기</b></span></div>
+            <div class="a2hs-step"><span class="a2hs-num">3</span><span>Safari에서 다시 ${SHARE_SVG} 를 눌러 ${PLUS_SVG} <b>홈 화면에 추가</b></span></div>
+          </div>` : `
           <div class="a2hs-steps">
             <div class="a2hs-step"><span class="a2hs-num">1</span><span>오른쪽 아래 ${MENU_SVG} 를 눌러<br><b>다른 브라우저로 열기</b></span></div>
             <div class="a2hs-step"><span class="a2hs-num">2</span><span>열린 브라우저에서 <b>홈 화면에 추가</b></span></div>
