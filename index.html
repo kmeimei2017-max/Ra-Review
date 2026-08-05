@@ -742,6 +742,52 @@
     }
     .exit-slide-btn:active { transform: scale(0.97); }
 
+    /* ── 로딩 표식 (Ra 로고 + 물결) ──
+       "지금 뭔가 하고 있다"를 알리는 유일한 신호다. 로그인·앱 시작 구간은 화면이 통째로
+       비어 있어서 사용자가 멈춘 줄 알고 다시 누르거나 나가버린다.
+       🚨 아이콘을 data URI 로 박아둔 이유 — 별도 파일 요청이면 앱이 켜지는 바로 그 순간
+          (네트워크가 제일 느린 때)에 못 뜬다. 로딩 표식이 로딩되길 기다릴 수는 없다.
+       ⚠️ 로고를 회전시키지 말 것 — 'Ra' 글자가 뒤집혀 읽을 수 없다. 물결만 퍼지게 한다. */
+    .ra-mark {
+      --ra-size: 88px;
+      position: relative;
+      width: var(--ra-size); height: var(--ra-size);
+      display: grid; place-items: center;
+    }
+    .ra-mark.sm { --ra-size: 56px; }
+    .ra-mark .ra-img {
+      position: relative; z-index: 1;
+      width: var(--ra-size); height: var(--ra-size);
+      border-radius: 22%;
+      background: #fff url('data:image/png;base64,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') center/cover no-repeat;
+      animation: ra-breathe 2.4s ease-in-out infinite;
+    }
+    /* 물결 두 겹 — 시차를 둬야 끊이지 않고 이어진다 */
+    .ra-mark .ra-wave {
+      position: absolute; inset: 0;
+      border-radius: 26%;
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      animation: ra-ripple 2.4s ease-out infinite;
+    }
+    .ra-mark .ra-wave.d2 { animation-delay: 1.2s; }
+    @keyframes ra-breathe {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.04); }
+    }
+    @keyframes ra-ripple {
+      0%   { transform: scale(1);   opacity: 0.5; }
+      100% { transform: scale(2.1); opacity: 0; }
+    }
+
+    /* 앱이 켜질 때와 로그인으로 넘어갈 때 덮는 화면 */
+    .boot-splash {
+      position: fixed; inset: 0; z-index: 2000;
+      background: var(--bg-dark);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.35s ease;
+    }
+    .boot-splash.gone { opacity: 0; pointer-events: none; }
+
     /* 저장 중 로딩 오버레이 */
     .loading-overlay {
       display: none;
@@ -1461,9 +1507,24 @@
   </div>
 
   <!-- 저장 중 로딩 오버레이 -->
+  <!-- 앱이 켜지는 동안 덮는 화면. HTML 에 미리 그려둬야 JS 가 돌기 전부터 보인다 —
+       JS 로 만들면 그 사이가 여전히 빈 화면이라 만든 의미가 없다.
+       로그인으로 넘어갈 때도 이걸 다시 쓴다(showBootSplash) -->
+  <div id="bootSplash" class="boot-splash">
+    <div class="ra-mark">
+      <div class="ra-wave"></div>
+      <div class="ra-wave d2"></div>
+      <div class="ra-img"></div>
+    </div>
+  </div>
+
   <div id="loadingOverlay" class="loading-overlay">
     <div class="loading-box">
-      <div class="loading-spinner"></div>
+      <div class="ra-mark sm">
+        <div class="ra-wave"></div>
+        <div class="ra-wave d2"></div>
+        <div class="ra-img"></div>
+      </div>
       <div class="loading-text">저장 중...</div>
     </div>
   </div>
@@ -1549,6 +1610,9 @@
     }
 
     async function kakaoLogin() {
+      // 누르는 즉시 덮는다 — 이 뒤로 카카오 페이지로 통째로 이동하는데,
+      // 그 사이 화면이 그대로 멈춰 있어서 안 눌린 줄 알고 다시 누르게 된다
+      showBootSplash();
       // 돌아올 주소에서 공유링크 파라미터(?view=)는 떼고 앱 기본 주소로
       const redirectTo = location.origin + location.pathname;
       const { error } = await getSupabase().auth.signInWithOAuth({
@@ -1556,6 +1620,7 @@
         options: { redirectTo }
       });
       if (error) {
+        hideBootSplash(true);
         console.error('카카오 로그인 실패:', error);
         alert('로그인에 실패했어요.\n잠시 후 다시 시도해 주세요.');
       }
@@ -2471,6 +2536,30 @@
     }
 
     // 저장 중 로딩 오버레이 표시/숨김
+    // ── 로딩 표식 (Ra 로고) ──
+    // 🚨 로딩이 순식간에 끝나면 표식이 번쩍하고 사라져서 오히려 산만하다 → 최소 400ms 는 띄운다.
+    const BOOT_MIN_MS = 400;
+    let bootShownAt = Date.now();
+
+    function showBootSplash() {
+      const el = document.getElementById('bootSplash');
+      if (!el) return;
+      bootShownAt = Date.now();
+      el.classList.remove('gone');
+    }
+    // now=true 면 최소 표시시간을 무시하고 즉시 치운다(뒤로가기로 돌아왔을 때 등)
+    function hideBootSplash(now = false) {
+      const el = document.getElementById('bootSplash');
+      if (!el || el.classList.contains('gone')) return;
+      const wait = now ? 0 : Math.max(0, BOOT_MIN_MS - (Date.now() - bootShownAt));
+      setTimeout(() => el.classList.add('gone'), wait);
+    }
+    // 🚨 카카오에서 취소하고 뒤로 오면 bfcache 로 복원되는데, 그때 덮개가 그대로 남아
+    //    앱이 영영 안 열린 것처럼 보인다. 복원 순간 반드시 치운다.
+    window.addEventListener('pageshow', (e) => { if (e.persisted) hideBootSplash(true); });
+    // 무슨 일이 있어도(에러·네트워크 지연) 덮개가 화면을 영구히 가리지 않게 하는 안전장치
+    setTimeout(() => hideBootSplash(true), 8000);
+
     function showLoading(message = '저장 중...') {
       document.querySelector('#loadingOverlay .loading-text').textContent = message;
       document.getElementById('loadingOverlay').classList.add('active');
@@ -3127,6 +3216,7 @@
 
     // 초기화
     (async () => {
+     try {
       // 공유 링크 여부를 데이터 로딩 전에 먼저 판단 → 홈 화면 깜빡임 방지
       // ★ ?view= 에 실리는 값은 후기 id 가 아니라 share_token(32자 hex)이다.
       //   id 는 이름표라 알아내면 열리지만, 토큰은 추측할 수 없다 → 009_share_token.sql
@@ -3169,6 +3259,11 @@
         // 홈으로 진입한 경우: 카메라 사용 안내 말풍선 1회
         setTimeout(showCamBubbleOnce, 800);
       }
+     } finally {
+       // 🚨 반드시 finally 에서 치운다. 중간에 어디서든 실패하면 덮개가 남아
+       //    앱이 아예 안 열린 것처럼 보인다 — 에러 화면보다 나쁘다
+       hideBootSplash();
+     }
     })();
 
   </script>
