@@ -1449,7 +1449,7 @@
       <div class="rotate-hint-h">
         <div class="ri-icon">📱</div>
         <div class="ri-t1">가로로 돌려서 봐주세요</div>
-        <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요 🎣</div>
+        <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요</div>
       </div>
       <div class="detail-body" id="detailBody"></div>
     </div>
@@ -1459,7 +1459,7 @@
       <div class="rotate-hint-h">
         <div class="ri-icon">📱</div>
         <div class="ri-t1">가로로 돌려서 봐주세요</div>
-        <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요 🎣</div>
+        <div class="ri-t2">이 후기는 가로 사진이에요<br>폰을 옆으로 돌리면 시원하게 보여요</div>
       </div>
       <div class="detail-body" id="detailBodyReview"></div>
     </div>
@@ -2913,7 +2913,7 @@
       const firstImage = (trip.photos || []).find(p => (p.type || 'image') === 'image');
       const firstNote = (trip.photos || []).find(p => p.content && p.content.trim());
       const title = trip.caption || 'Ra-Review';
-      const description = (firstNote ? firstNote.content : '').trim().slice(0, 100) || '후기를 공유합니다 🎣';
+      const description = (firstNote ? firstNote.content : '').trim().slice(0, 100) || '후기를 공유합니다';
       const imageUrl = trip.thumb_url
         || (firstImage && firstImage.url)
         || 'https://ra-review.com/og-image.jpg';
@@ -3012,7 +3012,7 @@
     window.addEventListener('appinstalled', () => {
       a2hsPrompt = null;
       refreshA2HSVisibility();  // 설치되면 시트 항목이 사라진다
-      showToast('홈 화면에 추가됐어요 🎣');
+      showToast('홈 화면에 추가됐어요');
     });
 
     function onA2HSTap() {
