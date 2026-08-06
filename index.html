@@ -656,6 +656,91 @@
       fill: currentColor;
     }
 
+    /* ===== 아이폰 그림 설명서 ===== */
+    /* 아이폰은 자동 설치 프롬프트가 없어 사용자가 사파리 공유 시트를 직접 헤쳐야 한다.
+       ★ 글로만 쓴 안내로는 실패한다 — 공유 버튼을 모르는 사람이 대부분이고,
+         '홈 화면에 추가'는 목록을 밀어 올려야 나오며, 마지막 '추가'는 오른쪽 위에 작게 있다.
+         그래서 실제 아이폰 화면을 찍은 사진을 단계마다 붙이고 누를 곳을 표시한다.
+       ★ '알겠어요' 같은 확인 버튼은 두지 않는다. 그걸 누르면 알아서 추가되는 줄 안다. */
+    .a2hs-guide { position: relative; padding: 0; display: flex; flex-direction: column; max-height: 100%; }
+    .a2hs-ghead { flex: none; padding: 22px 22px 14px; }
+    /* 가운데만 스크롤 — 머리(제목)와 발(닫기)은 늘 제자리에 있어야 길을 잃지 않는다 */
+    .a2hs-gbody {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 4px 22px 6px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .a2hs-gbody::-webkit-scrollbar { display: none; }
+    .a2hs-gfoot { flex: none; padding: 12px 22px 18px; border-top: 1px solid var(--border-dark); }
+
+    .a2hs-gstep { padding: 14px 0; border-top: 1px solid var(--border-dark); }
+    .a2hs-gstep:first-child { border-top: none; }
+    .a2hs-gstep-t {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 10px;
+      text-align: left;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+    .a2hs-shot { position: relative; border-radius: 9px; overflow: hidden; border: 1px solid var(--border-dark); }
+    .a2hs-shot img { width: 100%; display: block; }
+    .a2hs-shot.tight { width: 62%; margin: 0 auto; }
+
+    /* 누를 곳 표시 — 동그란 번짐(작은 버튼), 네모 테두리(목록의 한 줄) */
+    .a2hs-pin {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      margin: -17px 0 0 -17px;
+      border-radius: 50%;
+      animation: a2hsPulse 2.4s ease-out infinite;
+    }
+    @keyframes a2hsPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+      100% { box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+    }
+    .a2hs-box {
+      position: absolute;
+      border: 2.5px solid #3b82f6;
+      border-radius: 8px;
+      animation: a2hsBox 2.4s ease-out infinite;
+    }
+    @keyframes a2hsBox {
+      0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.55); }
+      100% { box-shadow: 0 0 0 14px rgba(59, 130, 246, 0); }
+    }
+    /* 2단계는 '누르기'가 아니라 '밀어 올리기'라 손짓으로 보여준다 */
+    .a2hs-swipe {
+      position: absolute;
+      left: 50%;
+      bottom: 12%;
+      width: 40px;
+      height: 40px;
+      margin-left: -20px;
+      animation: a2hsSwipe 2.6s ease-in-out infinite;
+    }
+    .a2hs-swipe svg { width: 100%; height: 100%; fill: #3b82f6; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8)); }
+    @keyframes a2hsSwipe {
+      0%, 100% { transform: translateY(14px); opacity: 0.35; }
+      50%      { transform: translateY(-14px); opacity: 1; }
+    }
+    .a2hs-done { margin: 10px 0 2px; font-size: 13px; font-weight: 600; color: #4ade80; }
+    /* 아래에 더 있다는 힌트 (닫기 버튼 위) */
+    .a2hs-fade {
+      position: absolute;
+      left: 1px;
+      right: 1px;
+      bottom: 55px;
+      height: 34px;
+      pointer-events: none;
+      background: linear-gradient(transparent, var(--bg-card));
+    }
+
     /* 이미 설치됐거나(standalone) 설치가 불가능한 환경이면 항목 자체를 감춘다 */
     body.a2hs-off .ps-a2hs { display: none; }
 
@@ -3027,9 +3112,13 @@
       const MENU_SVG  = '<svg class="a2hs-ico" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>';
 
       const lead = '홈 화면에 추가';
-      const sub  = '설치 없이 아이콘만 생겨요.<br>주소창 없이 <b>앱처럼 전체화면</b>으로 열려요.';
+      let sub = '설치 없이 아이콘만 생겨요.<br>주소창 없이 <b>앱처럼 전체화면</b>으로 열려요.';
 
-      let body, mainLabel, onMain;
+      // mainLabel 이 null 이면 주 버튼 없이 '닫기'만 남는다.
+      // 실제로 무언가가 일어나는 버튼(안드로이드 원터치 설치)에만 주 버튼을 준다 —
+      // 눌러도 아무 일 없는 '알겠어요'는 자동으로 추가되는 줄 알게 만든다.
+      let body, mainLabel = null, onMain = null;
+      let guide = false;   // 사진이 들어간 긴 설명서 레이아웃인가
 
       if (isInAppBrowser()) {
         // 카톡 안에서는 불가능 — 밖으로 나가는 길부터 알려준다.
@@ -3046,8 +3135,6 @@
             <div class="a2hs-step"><span class="a2hs-num">1</span><span>오른쪽 아래 ${MENU_SVG} 를 눌러<br><b>다른 브라우저로 열기</b></span></div>
             <div class="a2hs-step"><span class="a2hs-num">2</span><span>열린 브라우저에서 <b>홈 화면에 추가</b></span></div>
           </div>`;
-        mainLabel = '알겠어요';
-        onMain = null;
       } else if (a2hsPrompt) {
         // 안드로이드 크롬 — 원터치
         body = '';
@@ -3059,14 +3146,46 @@
           try { await p.prompt(); } catch (_e) {}
         };
       } else if (isIOSDevice()) {
-        // 아이폰 — 사파리 공유 시트를 거쳐야 한다 (자동 프롬프트가 없다)
+        // 아이폰 — 사파리 공유 시트를 거쳐야 한다 (자동 프롬프트가 없다).
+        // 실제 아이폰 화면 사진으로 네 단계를 하나씩 짚는다. 특히 2단계(목록 밀어 올리기)가
+        // 없으면 '홈 화면에 추가'가 화면 밖에 있어서 못 찾고 포기한다.
+        guide = true;
+        sub = '설치 없이 아이콘만 생겨요.<br>아래 <b>1.2.3.4</b> 꼭 읽으시고 해보세요.';
         body = `
-          <div class="a2hs-steps">
-            <div class="a2hs-step"><span class="a2hs-num">1</span><span>아래 ${SHARE_SVG} <b>공유</b> 버튼을 누르고</span></div>
-            <div class="a2hs-step"><span class="a2hs-num">2</span><span>${PLUS_SVG} <b>홈 화면에 추가</b>를 고르세요</span></div>
+          <div class="a2hs-gstep">
+            <div class="a2hs-gstep-t"><span class="a2hs-num">1</span><span>맨 아래 ${SHARE_SVG} <b>공유</b> 버튼을 누르세요</span></div>
+            <div class="a2hs-shot">
+              <img src="a2hs/ios-1.jpg" alt="사파리 맨 아래 줄의 공유 버튼">
+              <span class="a2hs-pin" style="left:50%; top:77%"></span>
+            </div>
+          </div>
+          <div class="a2hs-gstep">
+            <div class="a2hs-gstep-t"><span class="a2hs-num">2</span><span>창이 올라오면 <b>손가락으로 위로</b> 밀어 올리세요</span></div>
+            <div class="a2hs-shot">
+              <img src="a2hs/ios-2.jpg" alt="아래에서 올라온 공유 창">
+              <span class="a2hs-swipe"><svg viewBox="0 0 24 24"><path d="M12 3l7 7h-4v11h-6V10H5l7-7z"/></svg></span>
+            </div>
+          </div>
+          <div class="a2hs-gstep">
+            <div class="a2hs-gstep-t"><span class="a2hs-num">3</span><span>밀어 올리면 나오는 ${PLUS_SVG} <b>홈 화면에 추가</b>를 누르세요</span></div>
+            <div class="a2hs-shot">
+              <img src="a2hs/ios-3.jpg" alt="목록 아래쪽의 홈 화면에 추가">
+              <span class="a2hs-box" style="left:4.4%; top:73.5%; right:4.4%; height:9.5%"></span>
+            </div>
+          </div>
+          <div class="a2hs-gstep">
+            <div class="a2hs-gstep-t"><span class="a2hs-num">4</span><span>오른쪽 위 파란 <b>추가</b>를 누르세요</span></div>
+            <div class="a2hs-shot">
+              <img src="a2hs/ios-4.jpg" alt="오른쪽 위 구석의 추가 버튼">
+              <span class="a2hs-pin" style="left:91.5%; top:12%"></span>
+            </div>
+          </div>
+          <div class="a2hs-gstep">
+            <div class="a2hs-shot tight">
+              <img src="a2hs/ios-5.jpg" alt="홈 화면에 생긴 Ra-Review 아이콘">
+            </div>
+            <p class="a2hs-done">✓ 끝났어요. 이제 이 아이콘으로 바로 여세요</p>
           </div>`;
-        mainLabel = '알겠어요';
-        onMain = null;
       } else {
         // 안드로이드인데 프롬프트가 아직 없는 경우(삼성 인터넷·파이어폭스 등)
         body = `
@@ -3074,24 +3193,35 @@
             <div class="a2hs-step"><span class="a2hs-num">1</span><span>브라우저 ${MENU_SVG} <b>메뉴</b>를 누르고</span></div>
             <div class="a2hs-step"><span class="a2hs-num">2</span><span>${PLUS_SVG} <b>홈 화면에 추가</b>(앱 설치)를 고르세요</span></div>
           </div>`;
-        mainLabel = '알겠어요';
-        onMain = null;
       }
+
+      const head = `
+        <img class="a2hs-app-ico" src="icon-192.png" alt="">
+        <p class="ob-lead">${lead}</p>
+        <p class="a2hs-sub">${sub}</p>`;
+      const foot = `
+        ${mainLabel ? `<button type="button" class="ob-btn">${mainLabel}</button>` : ''}
+        <button type="button" class="ob-btn-ghost">닫기</button>`;
 
       const ov = document.createElement('div');
       ov.className = 'mic-onboard-overlay';
-      ov.innerHTML = `
+      // 설명서는 내용이 길어 가운데만 스크롤시키고, 짧은 안내는 예전 그대로 한 덩어리로 둔다
+      ov.innerHTML = guide ? `
+        <div class="mic-onboard-card a2hs-guide">
+          <div class="a2hs-ghead">${head}</div>
+          <div class="a2hs-gbody">${body}</div>
+          <div class="a2hs-fade"></div>
+          <div class="a2hs-gfoot">${foot}</div>
+        </div>` : `
         <div class="mic-onboard-card">
-          <img class="a2hs-app-ico" src="icon-192.png" alt="">
-          <p class="ob-lead">${lead}</p>
-          <p class="a2hs-sub">${sub}</p>
+          ${head}
           ${body}
-          <button type="button" class="ob-btn">${mainLabel}</button>
-          <button type="button" class="ob-btn-ghost">닫기</button>
+          ${foot}
         </div>`;
       document.body.appendChild(ov);
 
-      ov.querySelector('.ob-btn').addEventListener('click', () => {
+      const mainBtn = ov.querySelector('.ob-btn');
+      if (mainBtn) mainBtn.addEventListener('click', () => {
         ov.remove();
         if (onMain) onMain();
       });
