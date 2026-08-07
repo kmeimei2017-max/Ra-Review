@@ -803,15 +803,24 @@
     /* 누를 곳 표시 — 동그란 번짐(작은 버튼), 네모 테두리(목록의 한 줄) */
     .a2hs-pin {
       position: absolute;
-      width: 34px;
-      height: 34px;
-      margin: -17px 0 0 -17px;
+      width: 30px;
+      height: 30px;
+      margin: -15px 0 0 -15px;
+      /* 🚨 테두리를 빼면 안 된다. 퍼지는 파동만으로는 한 주기의 절반이 거의 투명해서,
+         멈춰 놓고 보면 표시가 아예 없는 것처럼 보인다(실기기에서 확인).
+         특히 밝은 사진 위(로그인 아이콘)에서는 반투명 파랑이 통째로 묻힌다.
+         .a2hs-box 가 늘 보였던 이유가 바로 이 실선 테두리다. */
+      border: 2.5px solid #3b82f6;
       border-radius: 50%;
       animation: a2hsPulse 2.4s ease-out infinite;
     }
+    /* 파동과 별개로 검은 테두리를 항상 깔아둔다 — 밝은 배경에서도 파란 원이 살아난다.
+       ⚠️ 파동은 테두리 안쪽(spread 음수)에서 시작해 조금만 나온다. 크게 번지면
+          표시가 구석에 있을 때(⋮·오른쪽 위 '추가') 그림 밖으로 나가 잘린다 —
+          .a2hs-shot 이 overflow:hidden 이라 반쪽만 남아 지저분해진다. */
     @keyframes a2hsPulse {
-      0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-      100% { box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+      0%   { box-shadow: 0 0 0 -5px rgba(59, 130, 246, 0.8), 0 0 0 2px rgba(0, 0, 0, 0.45); }
+      100% { box-shadow: 0 0 0 7px rgba(59, 130, 246, 0), 0 0 0 2px rgba(0, 0, 0, 0.45); }
     }
     .a2hs-box {
       position: absolute;
@@ -820,8 +829,8 @@
       animation: a2hsBox 2.4s ease-out infinite;
     }
     @keyframes a2hsBox {
-      0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.55); }
-      100% { box-shadow: 0 0 0 14px rgba(59, 130, 246, 0); }
+      0%   { box-shadow: 0 0 0 -4px rgba(59, 130, 246, 0.6), 0 0 0 2px rgba(0, 0, 0, 0.4); }
+      100% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0), 0 0 0 2px rgba(0, 0, 0, 0.4); }
     }
     /* 2단계는 '누르기'가 아니라 '밀어 올리기'라 손짓으로 보여준다 */
     .a2hs-swipe {
