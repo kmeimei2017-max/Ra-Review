@@ -102,6 +102,14 @@
       position: relative;
       width: 100%;
       aspect-ratio: 16 / 9;
+      /* 🚨 카드 높이의 근거가 aspect-ratio 하나뿐이면 아이폰에서 메인이 통째로 검게 나온다.
+         .trip-card img 가 height:100% 라, 카드가 높이를 못 잡는 순간 이미지도 0이 되어
+         사진이 로드될 때까지 아무것도 안 보인다(사진이 하나 뜰 때마다 카드가 하나씩
+         나타나는 것으로 확인). 아이폰 사파리는 flex 아이템의 aspect-ratio 를 놓칠 때가 있다.
+         아래 세 줄이 그 하나뿐인 근거를 셋으로 늘린다. */
+      min-height: 50vw;           /* aspect-ratio 가 안 먹어도 자리는 선다 */
+      flex: none;                 /* flex 아이템으로 눌려 찌그러지지 않게 */
+      background: var(--bg-card); /* 사진이 오기 전에도 카드 자리가 보이게 */
       border-radius: 12px;
       overflow: hidden;
       cursor: pointer;
@@ -2056,15 +2064,17 @@
         return;
       }
 
-      const html = sorted.map(trip => {
+      const html = sorted.map((trip, i) => {
         // 카드 대표 이미지: 대표사진 우선, 없으면 첫 '사진'(영상 URL은 카드에 못 쓰므로 제외)
         const firstPhoto = (trip.photos || []).find(p => (p.type || 'image') === 'image');
         const coverImg = trip.thumb_url || (firstPhoto && firstPhoto.url);
         const hasVideo = (trip.photos || []).some(p => p.type === 'video');
+        // 첫 화면에 걸리는 카드까지는 lazy 를 걸지 않는다 — 첫인상이 빈 화면이 되면 안 된다
+        const loadMode = i < 3 ? 'eager' : 'lazy';
         if (coverImg) {
           return `
             <div class="trip-card" onclick="viewTrip('${trip.id}')">
-              <img src="${coverImg}" alt="${trip.caption}" loading="lazy" decoding="async" onerror="this.style.display='none'">
+              <img src="${coverImg}" alt="${trip.caption}" loading="${loadMode}" decoding="async" onerror="this.style.display='none'">
               ${hasVideo ? '<span class="trip-card-video">🎬</span>' : ''}
               <div class="trip-card-overlay">${trip.caption}</div>
             </div>
