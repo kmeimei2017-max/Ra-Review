@@ -840,6 +840,76 @@
     }
     .a2hs-done { margin: 10px 0 2px; font-size: 13px; font-weight: 600; color: #4ade80; text-align: center; }
 
+    /* ── 안드로이드 카톡용 — 여정이 길어서 '고비' 세 덩어리로 묶는다 ── */
+    .a2hs-chapter { display: flex; align-items: flex-start; gap: 9px; margin: 22px 0 4px; }
+    .a2hs-chapter:first-child { margin-top: 16px; }
+    /* 고비로 묶은 화면에서는 칸 사이 선을 지운다 — 제목이 이미 구분자 노릇을 한다.
+       (아이폰 설명서에는 .a2hs-chapter 가 없으므로 그쪽 선은 그대로 남는다) */
+    .a2hs-chapter ~ .a2hs-gstep { border-top: none; padding: 12px 0 14px; }
+    .a2hs-chnum {
+      flex: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .a2hs-cht { margin: 2px 0 0; font-size: 15.5px; font-weight: 700; line-height: 1.4; }
+    .a2hs-chsub { margin: 4px 0 2px 35px; font-size: 12.5px; line-height: 1.55; color: var(--text-muted); }
+    .a2hs-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #3b82f6; margin: 0 8px; }
+    .a2hs-pin.sm { width: 26px; height: 26px; margin: -13px 0 0 -13px; }
+
+    /* 카톡 밖으로 나가는 동안 뜨는 로딩 화면 — 없으면 "잘못 눌렀나" 하고 멈춘다 */
+    .a2hs-wait {
+      margin-top: 10px;
+      padding: 11px 12px;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-dark);
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+    .a2hs-wait img { width: 86px; flex: none; border-radius: 6px; display: block; }
+    .a2hs-wait p { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--text-muted); }
+    .a2hs-wait b { color: #fbbf24; }
+
+    /* 🚨 설치를 눌러도 화면이 그대로라 다 끝난 줄 안다. "지금 여기 → 여기로"를
+       두 화면으로 나란히 보여주는 게 이 안내의 핵심이다. */
+    .a2hs-move { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .a2hs-movecol { flex: 1; min-width: 0; }
+    .a2hs-movecap { margin: 0 0 6px; font-size: 11.5px; text-align: center; font-weight: 700; }
+    .a2hs-movecol.from .a2hs-movecap { color: #fbbf24; }
+    .a2hs-movecol.to   .a2hs-movecap { color: #60a5fa; }
+    .a2hs-movecol.from .a2hs-shot { border-color: rgba(251, 191, 36, 0.45); }
+    .a2hs-movecol.from .a2hs-shot img { opacity: 0.75; }
+    .a2hs-movearrow {
+      flex: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 18px;
+      animation: a2hsNudge 1.8s ease-in-out infinite;
+    }
+    @keyframes a2hsNudge {
+      0%, 100% { transform: translateX(-3px); }
+      50%      { transform: translateX(3px); }
+    }
+    .a2hs-movenote { margin: 10px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--text-muted); text-align: center; }
+    .a2hs-movenote b { color: #fbbf24; }
+
     /* 이미 설치됐거나(standalone) 설치가 불가능한 환경이면 항목 자체를 감춘다 */
     body.a2hs-off .ps-a2hs { display: none; }
 
@@ -3288,16 +3358,82 @@
         // 🚨 나가는 방법이 기기마다 다르다. 아이폰 카톡에는 '다른 브라우저로 열기'가
         //    아예 없어서 공유 시트를 거쳐야 하고, 그만큼 단계가 하나 더 늘어난다.
         //    안드로이드 문구를 아이폰에 그대로 보여주면 없는 버튼을 가리키게 된다.
-        body = isIOSDevice() ? `
-          <div class="a2hs-steps">
-            <div class="a2hs-step"><span class="a2hs-num">1</span><span>아래 ${SHARE_SVG} <b>공유</b> 버튼을 누르고</span></div>
-            <div class="a2hs-step"><span class="a2hs-num">2</span><span>목록에서 <b>Safari로 열기</b></span></div>
-            <div class="a2hs-step"><span class="a2hs-num">3</span><span>Safari에서 다시 ${SHARE_SVG} 를 눌러 ${PLUS_SVG} <b>홈 화면에 추가</b></span></div>
-          </div>` : `
-          <div class="a2hs-steps">
-            <div class="a2hs-step"><span class="a2hs-num">1</span><span>오른쪽 아래 ${MENU_SVG} 를 눌러<br><b>다른 브라우저로 열기</b></span></div>
-            <div class="a2hs-step"><span class="a2hs-num">2</span><span>열린 브라우저에서 <b>홈 화면에 추가</b></span></div>
-          </div>`;
+        if (isIOSDevice()) {
+          body = `
+            <div class="a2hs-steps">
+              <div class="a2hs-step"><span class="a2hs-num">1</span><span>아래 ${SHARE_SVG} <b>공유</b> 버튼을 누르고</span></div>
+              <div class="a2hs-step"><span class="a2hs-num">2</span><span>목록에서 <b>Safari로 열기</b></span></div>
+              <div class="a2hs-step"><span class="a2hs-num">3</span><span>Safari에서 다시 ${SHARE_SVG} 를 눌러 ${PLUS_SVG} <b>홈 화면에 추가</b></span></div>
+            </div>`;
+        } else {
+          // 안드로이드 카톡 — 이 앱에서 가장 긴 여정이다(카톡 밖으로 → 설치 → 앱 목록 → 홈 화면).
+          // 🚨 특히 '설치'를 눌러도 화면이 그대로라 다 끝난 줄 알고 여기서 멈춘다.
+          //    앱 목록까지 안내하지 않으면 홈 화면에는 영영 아이콘이 안 생긴다.
+          guide = true;
+          callout = `
+            <div class="a2hs-callout">
+              <p class="a2hs-co-main">
+                <span class="a2hs-nums">${[1, 2, 3].map(n => `<span class="a2hs-inum">${n}</span>`).join('')}</span>
+                <span>다 읽고 설치 하세요 꼭 !!!</span>
+              </p>
+            </div>`;
+          body = `
+            <div class="a2hs-chapter"><span class="a2hs-chnum">1</span><p class="a2hs-cht">오른쪽 아래 <b>⋮</b> 클릭<br>→ 다른 브라우저로 열기</p></div>
+            <p class="a2hs-chsub">카톡 안에서는 홈 화면에 추가할 수 없어요.</p>
+            <div class="a2hs-gstep">
+              <div class="a2hs-shot">
+                <img src="a2hs/and-1.jpg" alt="카톡 메뉴의 다른 브라우저로 열기">
+                <span class="a2hs-pin" style="left:92.8%; top:71.4%"></span>
+                <span class="a2hs-box" style="left:41.7%; top:43.5%; right:3.3%; height:13%"></span>
+              </div>
+              <div class="a2hs-wait">
+                <img src="a2hs/and-load.jpg" alt="">
+                <p>나가는 동안 이 화면이 <b>잠깐</b> 보여요.<br>잘못된 게 아니니 그대로 기다리세요.</p>
+              </div>
+            </div>
+
+            <div class="a2hs-chapter"><span class="a2hs-chnum">2</span><p class="a2hs-cht">앱 다운받기</p></div>
+            <p class="a2hs-chsub">여기에서 다운 받는 거예요.</p>
+            <div class="a2hs-gstep">
+              <div class="a2hs-gstep-t"><span class="a2hs-dot"></span><span>오른쪽 아래 <b>로그인 아이콘</b>을 누르세요</span></div>
+              <div class="a2hs-shot"><img src="a2hs/and-2.jpg" alt="오른쪽 아래 로그인 아이콘"><span class="a2hs-pin" style="left:88%; top:76%"></span></div>
+            </div>
+            <div class="a2hs-gstep">
+              <div class="a2hs-gstep-t"><span class="a2hs-dot"></span><span><b>홈 화면에 추가</b></span></div>
+              <div class="a2hs-shot"><img src="a2hs/and-3.jpg" alt="계정 메뉴의 홈 화면에 추가"><span class="a2hs-box" style="left:33.3%; top:47.5%; right:8.3%; height:15.5%"></span></div>
+            </div>
+            <div class="a2hs-gstep">
+              <div class="a2hs-gstep-t"><span class="a2hs-dot"></span><span>파란 <b>홈 화면에 추가</b></span></div>
+              <div class="a2hs-shot"><img src="a2hs/and-4.jpg" alt="파란 홈 화면에 추가 버튼"><span class="a2hs-box" style="left:14.2%; top:60.8%; right:13.7%; height:12.2%"></span></div>
+            </div>
+            <div class="a2hs-gstep">
+              <div class="a2hs-gstep-t"><span class="a2hs-dot"></span><span><b>설치</b>를 누르세요</span></div>
+              <div class="a2hs-shot"><img src="a2hs/and-5.jpg" alt="앱 설치 창의 설치 버튼"><span class="a2hs-pin" style="left:83.3%; top:81.8%"></span></div>
+            </div>
+
+            <div class="a2hs-chapter"><span class="a2hs-chnum">3</span><p class="a2hs-cht">홈 화면에 추가하기</p></div>
+            <p class="a2hs-chsub">잠깐 폰 홈으로 나가서, 앱 목록에서 다운받은 걸 찾아<br>홈 화면에 추가하면 끝이에요.</p>
+            <div class="a2hs-gstep">
+              <div class="a2hs-gstep-t"><span class="a2hs-dot"></span><span>폰 <b>홈 버튼</b>을 눌러 <b>앱 목록</b>으로 가세요</span></div>
+              <div class="a2hs-move">
+                <div class="a2hs-movecol from">
+                  <p class="a2hs-movecap">지금 여기</p>
+                  <div class="a2hs-shot"><img src="a2hs/and-8.jpg" alt="설치 뒤에도 그대로인 화면"></div>
+                </div>
+                <span class="a2hs-movearrow">›</span>
+                <div class="a2hs-movecol to">
+                  <p class="a2hs-movecap">여기로</p>
+                  <div class="a2hs-shot"><img src="a2hs/and-9.jpg" alt="앱 목록의 Ra-Review"><span class="a2hs-pin sm" style="left:68.5%; top:82%"></span></div>
+                </div>
+              </div>
+              <p class="a2hs-movenote">설치는 됐는데 화면이 그대로라 <b>안 된 것 같지만</b> 정상이에요.<br>앱 목록에 <b>Ra-Review</b> 가 들어와 있습니다.</p>
+            </div>
+            <div class="a2hs-gstep">
+              <div class="a2hs-gstep-t"><span class="a2hs-dot"></span><span><b>Ra</b> 아이콘을 <b>꾹 눌러</b> 홈 화면에 추가</span></div>
+              <div class="a2hs-shot"><img src="a2hs/and-7.jpg" alt="아이콘을 꾹 눌러 나온 홈 화면에 추가"><span class="a2hs-box" style="left:55%; top:75%; width:20%; height:16%"></span></div>
+              <p class="a2hs-done">✓ 끝났어요. 이제 홈 화면에서 바로 여세요</p>
+            </div>`;
+        }
       } else if (a2hsPrompt) {
         // 안드로이드 크롬 — 원터치
         body = '';
