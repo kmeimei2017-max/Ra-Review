@@ -3416,6 +3416,28 @@
     window.addEventListener('resize', syncAvail);
     syncAvail();
 
+    // 🚨 아이폰 홈 화면 앱(standalone)에서 메인이 통째로 검게 나오던 것.
+    //    시작 직후 100vh 가 확정되기 전에 레이아웃이 굳으면 .app 높이가 0이 되고,
+    //    #homePage(.page height:100% + .home-feed flex:1) 도 따라서 0이 된다.
+    //    그래서 목록만 사라지고 FAB(position:fixed)은 그대로 보였다.
+    //    화면을 가로로 돌렸다 세로로 하면 재계산되며 정상으로 돌아온다(실기기 확인).
+    //
+    // ★ standalone 일 때만 실측 높이를 고정한다.
+    //   브라우저에서 같은 짓을 하면 주소창이 접힐 때마다 메인·미리보기가 출렁인다
+    //   (위 .write-trip 의 ⚠️ 주석이 말하는 그 문제). 홈 화면 앱은 주소창이 없어 해당 없음.
+    function lockAppHeight() {
+      if (!isStandaloneApp()) return;
+      const app = document.querySelector('.app');
+      const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      if (app && h) app.style.height = h + 'px';
+    }
+    lockAppHeight();
+    // 첫 페인트 뒤에 한 번 더 — 시작 직후 값이 아직 0일 수 있다
+    requestAnimationFrame(lockAppHeight);
+    window.addEventListener('load', lockAppHeight);
+    window.addEventListener('resize', lockAppHeight);
+    window.addEventListener('orientationchange', () => setTimeout(lockAppHeight, 120));
+
     // 🚨 후기칸을 누르면 그 카드의 윗변을 편집화면 맨 위에 맞춘다.
     // 크롬 기본 동작은 '커서를 화면 한가운데' 놓는 것이라, 사진 위가 잘리면서 아래로
     // 다음 사진이 딸려 올라온다. CSS scroll-margin-top 은 크롬이 무시한다(실측 확인).
