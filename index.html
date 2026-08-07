@@ -661,20 +661,108 @@
        ★ 글로만 쓴 안내로는 실패한다 — 공유 버튼을 모르는 사람이 대부분이고,
          '홈 화면에 추가'는 목록을 밀어 올려야 나오며, 마지막 '추가'는 오른쪽 위에 작게 있다.
          그래서 실제 아이폰 화면을 찍은 사진을 단계마다 붙이고 누를 곳을 표시한다.
-       ★ '알겠어요' 같은 확인 버튼은 두지 않는다. 그걸 누르면 알아서 추가되는 줄 안다. */
-    .a2hs-guide { position: relative; padding: 0; display: flex; flex-direction: column; max-height: 100%; }
-    .a2hs-ghead { flex: none; padding: 22px 22px 14px; }
-    /* 가운데만 스크롤 — 머리(제목)와 발(닫기)은 늘 제자리에 있어야 길을 잃지 않는다 */
+       ★ '알겠어요' 같은 확인 버튼은 두지 않는다. 그걸 누르면 알아서 추가되는 줄 안다.
+       ★ 팝업 카드가 아니라 화면을 통째로 쓴다. 카드로 했더니 아이폰(375x553)에서
+         사진 볼 공간이 250px밖에 안 남았다 — 바깥 여백·둥근 모서리·큰 앱 아이콘·
+         하단 닫기 버튼이 세로를 다 먹는다. 전체화면으로 바꿔 445px까지 넓혔다. */
+    .mic-onboard-overlay.a2hs-fullov { padding: 0; background: var(--bg-card); }
+    .a2hs-guide {
+      position: relative;
+      width: 100%;
+      max-width: none;
+      height: 100%;
+      max-height: none;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+    }
+    /* 제목 바 — 노치 있는 기기에서 상태바에 가리지 않게 안전영역만큼 내린다 */
+    .a2hs-gbar {
+      flex: none;
+      min-height: 46px;
+      padding: env(safe-area-inset-top) 8px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-dark);
+    }
+    .a2hs-bico { width: 22px; height: 22px; flex: none; border-radius: 22.5%; background: #fff; }
+    .a2hs-btitle { flex: 1; margin: 0; font-size: 16.5px; font-weight: 700; }
+    .a2hs-gx {
+      flex: none;
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 50%;
+      background: none;
+      color: var(--text-muted);
+      font-size: 17px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    /* 강조 띠 — 제목 바에 붙박이라 스크롤해도 안 사라진다 */
+    .a2hs-callout {
+      flex: none;
+      padding: 9px 14px 11px;
+      background: rgba(37, 130, 235, 0.22);
+      border-bottom: 1px solid rgba(59, 130, 246, 0.35);
+      text-align: center;
+    }
+    .a2hs-co-sub { margin: 0 0 5px; font-size: 12.5px; color: #b8c6e6; }
+    /* 숫자 동그라미와 글자의 가운데 맞추기 — vertical-align 으로는 폰트마다 어긋난다 */
+    .a2hs-co-main {
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 3px 6px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-light);
+    }
+    .a2hs-nums { display: flex; gap: 3px; }
+    .a2hs-inum {
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      font-size: 11.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 여기만 스크롤된다 */
     .a2hs-gbody {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 4px 22px 6px;
+      padding: 0 16px calc(16px + env(safe-area-inset-bottom));
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
     }
     .a2hs-gbody::-webkit-scrollbar { display: none; }
-    .a2hs-gfoot { flex: none; padding: 12px 22px 18px; border-top: 1px solid var(--border-dark); }
+    /* 맨 끝의 닫기 — 위 X를 못 찾는 사람을 위해 글자로도 한 번 더 둔다 */
+    .a2hs-gtail { margin: 18px 0 0; text-align: center; }
+    .a2hs-gtail button {
+      width: auto;                 /* .ob-btn-ghost 의 전폭을 되돌린다 */
+      margin: 0;
+      padding: 11px 28px;
+      border: 1px solid var(--border-dark);
+      border-radius: 10px;
+      background: none;
+      color: var(--text-muted);
+      font-size: 15px;
+      cursor: pointer;
+    }
 
     .a2hs-gstep { padding: 14px 0; border-top: 1px solid var(--border-dark); }
     .a2hs-gstep:first-child { border-top: none; }
@@ -729,17 +817,7 @@
       0%, 100% { transform: translateY(14px); opacity: 0.35; }
       50%      { transform: translateY(-14px); opacity: 1; }
     }
-    .a2hs-done { margin: 10px 0 2px; font-size: 13px; font-weight: 600; color: #4ade80; }
-    /* 아래에 더 있다는 힌트 (닫기 버튼 위) */
-    .a2hs-fade {
-      position: absolute;
-      left: 1px;
-      right: 1px;
-      bottom: 55px;
-      height: 34px;
-      pointer-events: none;
-      background: linear-gradient(transparent, var(--bg-card));
-    }
+    .a2hs-done { margin: 10px 0 2px; font-size: 13px; font-weight: 600; color: #4ade80; text-align: center; }
 
     /* 이미 설치됐거나(standalone) 설치가 불가능한 환경이면 항목 자체를 감춘다 */
     body.a2hs-off .ps-a2hs { display: none; }
@@ -3118,7 +3196,8 @@
       // 실제로 무언가가 일어나는 버튼(안드로이드 원터치 설치)에만 주 버튼을 준다 —
       // 눌러도 아무 일 없는 '알겠어요'는 자동으로 추가되는 줄 알게 만든다.
       let body, mainLabel = null, onMain = null;
-      let guide = false;   // 사진이 들어간 긴 설명서 레이아웃인가
+      let guide = false;      // 사진이 들어간 전체화면 설명서인가
+      let callout = '';       // 설명서 맨 위의 강조 띠
 
       if (isInAppBrowser()) {
         // 카톡 안에서는 불가능 — 밖으로 나가는 길부터 알려준다.
@@ -3150,7 +3229,16 @@
         // 실제 아이폰 화면 사진으로 네 단계를 하나씩 짚는다. 특히 2단계(목록 밀어 올리기)가
         // 없으면 '홈 화면에 추가'가 화면 밖에 있어서 못 찾고 포기한다.
         guide = true;
-        sub = '설치 없이 아이콘만 생겨요.<br>아래 <b>1.2.3.4</b> 꼭 읽으시고 해보세요.';
+        // 숫자는 아래 단계의 번호와 같은 파란 동그라미로 — "저 번호가 이 번호"가 바로 이어진다
+        callout = `
+          <div class="a2hs-callout">
+            <p class="a2hs-co-sub">설치 없이 아이콘만 생겨요.</p>
+            <p class="a2hs-co-main">
+              <span>아래</span>
+              <span class="a2hs-nums">${[1, 2, 3, 4].map(n => `<span class="a2hs-inum">${n}</span>`).join('')}</span>
+              <span>꼭 읽으시고 해보세요.</span>
+            </p>
+          </div>`;
         body = `
           <div class="a2hs-gstep">
             <div class="a2hs-gstep-t"><span class="a2hs-num">1</span><span>맨 아래 ${SHARE_SVG} <b>공유</b> 버튼을 누르세요</span></div>
@@ -3204,14 +3292,20 @@
         <button type="button" class="ob-btn-ghost">닫기</button>`;
 
       const ov = document.createElement('div');
-      ov.className = 'mic-onboard-overlay';
-      // 설명서는 내용이 길어 가운데만 스크롤시키고, 짧은 안내는 예전 그대로 한 덩어리로 둔다
+      // 설명서는 화면을 통째로 쓰고, 짧은 안내는 예전 그대로 가운데 뜨는 카드로 둔다
+      ov.className = guide ? 'mic-onboard-overlay a2hs-fullov' : 'mic-onboard-overlay';
       ov.innerHTML = guide ? `
         <div class="mic-onboard-card a2hs-guide">
-          <div class="a2hs-ghead">${head}</div>
-          <div class="a2hs-gbody">${body}</div>
-          <div class="a2hs-fade"></div>
-          <div class="a2hs-gfoot">${foot}</div>
+          <div class="a2hs-gbar">
+            <img class="a2hs-bico" src="icon-192.png" alt="">
+            <p class="a2hs-btitle">${lead}</p>
+            <button type="button" class="a2hs-gx" aria-label="닫기">✕</button>
+          </div>
+          ${callout}
+          <div class="a2hs-gbody">
+            ${body}
+            <div class="a2hs-gtail"><button type="button" class="ob-btn-ghost">닫기</button></div>
+          </div>
         </div>` : `
         <div class="mic-onboard-card">
           ${head}
@@ -3225,7 +3319,10 @@
         ov.remove();
         if (onMain) onMain();
       });
-      ov.querySelector('.ob-btn-ghost').addEventListener('click', () => ov.remove());
+      // 닫는 길은 화면마다 개수가 다르다(설명서는 위 X + 맨 아래 닫기) — 있는 대로 다 묶는다
+      ov.querySelectorAll('.ob-btn-ghost, .a2hs-gx').forEach(b => {
+        b.addEventListener('click', () => ov.remove());
+      });
     }
 
     // 서비스워커 — 크롬 설치 프롬프트의 전제 조건. 캐시는 오프라인 폴백만 한다.
