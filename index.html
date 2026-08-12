@@ -485,73 +485,16 @@
     }
     .video-wrap.playing .video-play { opacity: 0; }
 
-    /* 음성 입력 마이크 (내용칸 우하단) */
+    /* 입력칸 래퍼 (제목칸·사진 후기칸 공용)
+       🚨 이름은 '마이크'지만 마이크는 걷어냈다(2026-08-13). 지우지 말 것 —
+          fitPhotoToScreen() 이 이 요소의 높이를 실측해 사진 크기를 정한다.
+          없애려면 그 함수와 renderPhotoForms() 까지 같이 고쳐야 한다.
+       resize: none — 사용자가 손잡이로 늘이면 사진 높이 계산이 어긋난다 */
     .mic-wrap { position: relative; }
-    .mic-wrap .form-input { resize: none; padding-bottom: 56px; }
-    .mic-fab {
-      position: absolute;
-      right: 10px;
-      bottom: 10px;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-      z-index: 2;
-    }
-    .mic-ico { width: 22px; height: 22px; display: block; }
-    .mic-fab.listening {
-      background: #ef4444;
-      animation: micPulse 2.6s ease-out infinite;
-    }
-    /* 호수에 물방울 — 잔물결이 천천히 번져 사라짐 (버튼은 가만히) */
-    @keyframes micPulse {
-      0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
-      100% { box-shadow: 0 0 0 36px rgba(239, 68, 68, 0); }
-    }
-    /* 모바일 안내 모드 — 파란색 유지 + 파란 잔물결 (녹음이 아니라 '음성 모드 켜짐' 표시) */
-    .mic-fab.guiding {
-      background: #2563eb;
-      animation: micPulseBlue 2.6s ease-out infinite;
-    }
-    @keyframes micPulseBlue {
-      0%   { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.55); }
-      100% { box-shadow: 0 0 0 36px rgba(37, 99, 235, 0); }
-    }
-    /* 듣는 중 안내 문구 */
-    .mic-hint {
-      font-size: var(--font-size);
-      color: #ef4444;
-      margin: 0 0 8px;
-    }
-    .mic-hint .mic-ico { width: 18px; height: 18px; display: inline-block; vertical-align: -4px; }
-    /* 모바일 안내문 — 입력칸 아래, 아이콘+↓화살표 | 텍스트 2줄 */
-    .mic-hint-guide {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: #93c5fd;
-      margin: 10px 0 0;
-    }
-    .mh-ico {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: #3b82f6;
-      flex-shrink: 0;
-    }
-    .mh-ico .mic-ico { width: 24px; height: 24px; vertical-align: 0; }
-    .mh-arrow { font-size: 18px; line-height: 1; margin-top: -2px; }
-    .mh-txt { font-size: 16px; line-height: 1.45; text-align: left; }
-    .mh-sub { font-size: 13px; opacity: 0.7; }
+    .mic-wrap .form-input { resize: none; }
 
-    /* ===== 첫 1회 음성 온보딩 카드 ===== */
+    /* ===== 안내 오버레이 (홈 화면에 추가) ===== */
+    /* 이름은 옛 음성 온보딩에서 왔지만 지금은 a2hs 안내 전용이다 */
     .mic-onboard-overlay {
       position: fixed;
       inset: 0;
@@ -573,41 +516,6 @@
       color: var(--text-light);
     }
     .ob-lead { margin: 4px 0 18px; font-size: 19px; font-weight: 700; line-height: 1.5; color: var(--text-light); }
-    /* 실제 키보드 이미지 (온보딩) — 이미지에 그려둔 파란 동그라미 위에 펄스만 얹음 */
-    .ob-kbd-img { position: relative; margin: 0 0 20px; }
-    .ob-kbd-img img {
-      width: 100%;
-      display: block;
-      border-radius: 8px;
-      border: 1px solid var(--border-dark);
-    }
-    .ob-kbd-pin {
-      position: absolute;
-      left: 10.2%;
-      top: 88.6%;
-      width: 30px;
-      height: 30px;
-      margin: -15px 0 0 -15px;
-      border-radius: 50%;
-      background: transparent;
-      animation: obMicPulse 2.2s ease-out infinite;
-    }
-    @keyframes obMicPulse {
-      0%   { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
-      100% { box-shadow: 0 0 0 24px rgba(59, 130, 246, 0); }
-    }
-    .ob-note { font-size: 12.5px; color: var(--text-muted); margin: 0 0 18px; }
-    .ob-check {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin: 0 0 16px;
-      font-size: 15px;
-      color: var(--text-muted);
-      cursor: pointer;
-    }
-    .ob-check input { width: 18px; height: 18px; accent-color: #2563eb; }
     .ob-btn {
       width: 100%;
       padding: 13px;
@@ -943,12 +851,6 @@
 
     /* 제목칸은 flex 레이아웃이라 래퍼도 늘어나야 함 */
     .title-row .mic-wrap { flex: 1; }
-    /* 음성인식 미지원 기기: 마이크 숨기고 입력칸 여백 복원 */
-    body.no-speech .mic-fab { display: none; }
-    body.no-speech .mic-wrap .form-input { padding-bottom: 14px; }
-    /* 모바일: 온보딩 확인/5회 접속/다시안보기 후 우리 마이크 버튼 숨김(시선을 키보드 마이크로) */
-    body.mic-hidden .mic-fab { display: none; }
-    body.mic-hidden .mic-wrap .form-input { padding-bottom: 14px; }
 
     .slide-content {
       /* .slide-bottom(플렉스 세로) 안의 자식으로 배치된다 — 절대 위치가 아니다 */
@@ -1583,7 +1485,8 @@
 
     /* 🚨 후기를 쓰는 동안엔 카드 하나가 화면 하나를 정확히 채운다 → 다음 사진은 화면 밖.
        ⚠️ 사진 높이를 '화면 − 후기칸 몇 px' 로 미리 계산하지 말 것. 후기칸 높이는 상황마다 다르다
-          — 마이크를 못 쓰는 폰에선 body.no-speech 로 42px 짧아진다(그래서 딱 그만큼 다음 사진이 보였다).
+          — 글자 크기 설정·줄 수·기기에 따라 달라진다. 예전에 마이크 버튼 유무로 42px 어긋났을 때
+          딱 그만큼 다음 사진이 보였다(마이크는 지금 없지만 교훈은 그대로다).
           카드 높이만 못 박고 사진에게 '남는 높이를 다 먹어라'(flex:1) 하면 저절로 맞는다.
        ⚠️ 빈 여백(padding)으로 밀어내지 말 것 — 검은 여백이 화면에 남는다.
        ⚠️ 숨기기(visibility·opacity)도 금물 — 다음 후기칸을 한 번에 못 누른다.
@@ -1785,7 +1688,6 @@
           <div class="mic-wrap">
             <!-- 예시를 여러 주제로 늘어놓는다 — 하나만 두면 그 주제의 앱으로 오해한다(예전 낚시 예시가 그랬다) -->
             <textarea id="captionInput" class="form-input" placeholder="예: 런던 3박4일 · 내가 만든 케이크" rows="3" onchange="scheduleAutosave()"></textarea>
-            <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력"><svg class="mic-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg></button>
           </div>
         </div>
 
@@ -2320,160 +2222,11 @@
       if (v.paused) v.play(); else v.pause();
     }
 
-    // ===== 음성 입력 (Web Speech API, 서버 비용 0) =====
-    // 표준 마이크 아이콘 — 키보드 마이크와 모양을 맞춰 찾기 쉽게 (버튼·안내·온보딩 공용)
-    const MIC_SVG = '<svg class="mic-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>';
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const micIsMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    let micRecog = null, micActiveBtn = null, micActiveHint = null;
-    let micTextarea = null, micBase = '', micCommitted = '', micSession = '', micStop = false;
-
-    function micSync() {
-      // 프로그램적 변경은 onchange가 자동 발생하지 않으므로 직접 알림(사진별 글 모델 갱신용)
-      if (micTextarea) micTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    function micStopUI() {
-      if (micActiveBtn) micActiveBtn.classList.remove('listening', 'guiding');
-      if (micActiveHint) { micActiveHint.remove(); micActiveHint = null; }
-      micActiveBtn = null;
-    }
-    // 인식기는 한 번만 만들어 재사용한다 (매번 new 하면 권한을 매번 묻게 됨)
-    function micBuild() {
-      const r = new SpeechRec();
-      r.lang = 'ko-KR';
-      r.interimResults = true;
-      // 모바일 크롬은 결과를 누적식으로 줘서 연속 모드면 중복됨 → 모바일은 단발 + onend 자동 재시작으로 연속처럼
-      r.continuous = !micIsMobile;
-      r.onresult = (e) => {
-        let txt = '';
-        for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
-        micSession = txt;
-        if (micTextarea) micTextarea.value = micBase + micCommitted + micSession;
-        micSync();
-      };
-      r.onend = () => {
-        // 이번 세션 인식분을 확정 누적
-        if (micSession) { micCommitted += micSession.replace(/\s*$/, '') + ' '; micSession = ''; }
-        // 모바일: 멈춤 요청이 없으면 자동 재시작 → 한 번 탭으로 계속 말하기(권한도 한 번)
-        if (micIsMobile && !micStop && micActiveBtn) {
-          try { r.start(); return; } catch (err) { /* 재시작 불가 시 종료 */ }
-        }
-        micStopUI();
-      };
-      r.onerror = (e) => {
-        // 무음으로 끝난 경우(모바일)는 onend의 자동 재시작에 맡김
-        if (e.error === 'no-speech' && micIsMobile && !micStop && micActiveBtn) return;
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-          micStop = true;
-          micStopUI();
-          alert('마이크 권한이 필요해요. 브라우저 설정에서 마이크를 허용해 주세요.');
-        }
-      };
-      return r;
-    }
-
-    // 모바일: 온보딩 확인 후 — 키보드 올리고 ↓화살표로 키보드 마이크 위치를 잠깐 안내(자동 사라짐)
-    function showMicArrowHint(btn) {
-      const wrap = btn.closest('.mic-wrap');
-      const ta = wrap && wrap.querySelector('textarea');
-      if (!ta) return;
-      ta.focus(); // 키보드 올리기
-      const hint = document.createElement('div');
-      hint.className = 'mic-hint mic-hint-guide';
-      hint.innerHTML = `
-        <span class="mh-ico">${MIC_SVG}<span class="mh-arrow">↓</span></span>
-        <span class="mh-txt">키보드 마이크를 눌러 말하세요<br><span class="mh-sub">왼쪽 아래에 있어요</span></span>`;
-      wrap.insertAdjacentElement('afterend', hint); // 입력칸 '아래'(키보드 쪽)
-      setTimeout(() => { if (hint.parentNode) hint.remove(); }, 6000); // 잠깐 보여주고 사라짐
-    }
-
-    // 첫 1회 음성 온보딩 — 키보드 마이크 위치를 그림으로 안내
-    function showMicOnboard(btn) {
-      const ov = document.createElement('div');
-      ov.className = 'mic-onboard-overlay';
-      ov.innerHTML = `
-        <div class="mic-onboard-card">
-          <p class="ob-lead">핸드폰 마이크를 누르면 입력돼요 ^^</p>
-          <div class="ob-kbd-img">
-            <img src="kbd_guide.png" alt="키보드 마이크 위치">
-            <span class="ob-kbd-pin"></span>
-          </div>
-          <label class="ob-check"><input type="checkbox" id="obDontShow"> 다시 보지 않기</label>
-          <button type="button" class="ob-btn">확인</button>
-        </div>`;
-      document.body.appendChild(ov);
-      ov.querySelector('.ob-btn').addEventListener('click', () => {
-        // 체크 시 영구 숨김. 체크 안 해도 이번 세션은 버튼 숨겨 시선을 키보드 마이크로
-        if (ov.querySelector('#obDontShow').checked) localStorage.setItem('rabong_mic_hidden', '1');
-        ov.remove();
-        document.body.classList.add('mic-hidden'); // 파란 버튼 사라짐(이번 세션)
-        showMicArrowHint(btn);                     // 키보드 + ↓화살표 안내
-      });
-    }
-
-    // 버튼 기준으로 같은 .mic-wrap 안의 textarea를 찾아 음성을 채운다 (어느 입력칸이든 재사용)
-    function toggleMic(btn) {
-      const wrap = btn.closest('.mic-wrap');
-      const ta = wrap && wrap.querySelector('textarea');
-      if (!ta) return;
-
-      // ── 모바일: '키보드 마이크 안내' 모드 ──
-      // 갤럭시/아이폰 키보드 음성이 훨씬 부드럽고 권한·세션 문제도 없음.
-      // 우리 버튼은 펄스+안내만 담당하고, 실제 받아쓰기는 키보드 마이크에 맡긴다.
-      if (micIsMobile) {
-        // 온보딩 팝업 → 확인 시 버튼 숨김 + 키보드 + 화살표 안내
-        showMicOnboard(btn);
-        return;
-      }
-
-      // ── PC: 직접 음성인식(Web Speech) ──
-      // 이미 듣는 중이면 멈춤(자동 재시작도 중단)
-      if (micActiveBtn) { micStop = true; if (micRecog) micRecog.stop(); return; }
-
-      if (!SpeechRec) {
-        alert('이 브라우저는 음성 입력을 지원하지 않아요.\n키보드의 마이크 버튼을 사용해 주세요. 🎤');
-        return;
-      }
-
-      micTextarea = ta;
-      micBase = ta.value ? ta.value.replace(/\s*$/, '') + ' ' : '';
-      micCommitted = '';
-      micSession = '';
-      micStop = false;
-      if (!micRecog) micRecog = micBuild();
-
-      try {
-        micRecog.start();
-        micActiveBtn = btn;
-        btn.classList.add('listening');
-        micActiveHint = document.createElement('div');
-        micActiveHint.className = 'mic-hint';
-        micActiveHint.textContent = micIsMobile
-          ? '천천히 편하게 말씀하세요 (다 끝나면 다시 눌러 멈춤)'
-          : '천천히 편하게 말씀하세요 (다시 누르면 멈춤)';
-        wrap.insertAdjacentElement('afterend', micActiveHint);
-      } catch (err) {
-        micStopUI();
-      }
-    }
-
-    // PC에서 음성 인식 미지원이면 마이크 버튼 숨김.
-    // 모바일은 Web Speech 없이도 '키보드 마이크 안내' 모드로 동작하므로 항상 표시(아이폰 포함).
-    if (!SpeechRec && !micIsMobile) document.body.classList.add('no-speech');
-
-    // 모바일 마이크 버튼 노출 정책: 접속 5번까지 노출 → 이후 자동 숨김(시선을 키보드 마이크로).
-    // '다시 보지 않기' 체크 시 즉시 영구 숨김. ?ob=1 이면 리셋(다시 보기).
-    if (micIsMobile) {
-      if (/[?&]ob=1/.test(location.search)) {
-        localStorage.removeItem('rabong_mic_visits');
-        localStorage.removeItem('rabong_mic_hidden');
-      }
-      const micVisits = (parseInt(localStorage.getItem('rabong_mic_visits'), 10) || 0) + 1;
-      localStorage.setItem('rabong_mic_visits', micVisits);
-      if (localStorage.getItem('rabong_mic_hidden') === '1' || micVisits > 5) {
-        document.body.classList.add('mic-hidden');
-      }
-    }
+    // ===== 음성 입력은 앱에서 걷어냈다 (2026-08-13) =====
+    // 갤럭시·아이폰 키보드에 이미 마이크가 있고 사용자들이 그걸 쓴다. 앱이 따로 버튼을
+    // 두는 건 마찰을 더하는 쪽이라, 마이크 버튼·Web Speech·온보딩 카드를 전부 지웠다.
+    // 사용법 안내는 앱 안 UI가 아니라 공유카드(후기)로 준다.
+    // ⚠️ .mic-wrap 클래스는 남아 있다 — 이름만 마이크고 지금은 입력칸 래퍼다(CSS 주석 참고).
 
     function goToHome() {
       showPage('homePage');
@@ -2877,7 +2630,6 @@
                 rows="3"
                 onchange="selectedPhotos[${index}].content = this.value; scheduleAutosave()"
               >${item.content || ''}</textarea>
-              <button type="button" class="mic-fab" onclick="toggleMic(this)" aria-label="음성으로 입력">${MIC_SVG}</button>
             </div>
           </div>
         </div>
@@ -3625,7 +3377,9 @@
     // ⚠️ 빈 여백(padding)으로 밀어내지 말 것 — 검은 여백이 화면에 남는다.
     // ⚠️ 숨기기(visibility·opacity)도 금물 — 다음 후기칸을 한 번에 못 누른다.
     // 🚨 사진이 쓸 높이는 '계산'하지 말고 '재서' 넣는다. 후기칸 높이가 상황마다 다르다 —
-    // 마이크를 못 쓰는 폰은 body.no-speech 로 42px 짧아지고, 딱 그만큼 다음 사진이 보였다.
+    // 예전에 마이크 버튼 유무로 42px 어긋났을 때 딱 그만큼 다음 사진이 보였다.
+    // ⚠️ .mic-wrap 은 마이크를 걷어낸 지금도 후기칸 래퍼로 살아 있다. 여기서 높이를 재는
+    //    대상이라 지우면 사진 크기 계산이 통째로 깨진다.
     function fitPhotoToScreen(card) {
       const vis = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
       const mic = card.querySelector('.mic-wrap');
