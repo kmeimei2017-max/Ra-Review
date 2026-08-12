@@ -3636,8 +3636,14 @@
       if (!card || !writeContentEl) return;
       fitPhotoToScreen(card);
       ignoreWriteScroll = true;
-      writeContentEl.scrollTop +=
-        card.getBoundingClientRect().top - writeContentEl.getBoundingClientRect().top;
+      // 🚨 예전엔 카드 '윗변'을 스크롤 영역 맨 위에 맞췄다(scrollTop 직접 계산). 그 방식은
+      //    "카드 높이 == 화면 높이"를 전제로 하는데, 키보드가 올라오며 --avail 이 급감하면
+      //    카드도 같이 작아져서 미리 맞춰둔 스크롤이 컨텐츠 범위를 벗어난다.
+      //    아이폰에서 후기칸을 누르면 화면이 통째로 검게 나왔다(스크롤하면 도로 나옴).
+      //    기준을 '변하는 것(카드)' 에서 '봐야 하는 것(입력칸)' 으로 옮긴다 — 제목칸도 같은 방식이다.
+      //    ⚠️ 카드 높이 고정(--avail − 18)은 그대로 둘 것. 갤럭시에서 다음 사진이 딸려 오는 걸
+      //       막는 건 그 CSS 규칙이지 여기가 아니다.
+      input.scrollIntoView({ block: 'end' });
       // scroll 이벤트는 rAF 콜백보다 먼저 발생한다 → 여기서 풀면 순서가 맞는다
       requestAnimationFrame(() => {
         writeScrollPrev = writeContentEl.scrollTop;
