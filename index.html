@@ -3700,7 +3700,17 @@
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         const a = focusedPhotoInput();
-        if (a) requestAnimationFrame(() => alignPhotoCard(a));
+        if (a) { requestAnimationFrame(() => alignPhotoCard(a)); return; }
+        // 🚨 제목칸은 #photoFormsContainer 밖이다(제목 고칠 땐 저장하기를 접지 않으려는 의도 —
+        //    위 .write-trip.writing 주석 참고). 그 바람에 키보드 보정까지 같이 빠져 있었다.
+        //    키보드가 올라오며 --avail 이 줄면 레이아웃이 당겨져 입력칸이 화면 밖으로 밀렸고,
+        //    글자를 한 자 쳐야 브라우저가 커서를 따라 스크롤해서 그제서야 보였다(아이폰 실기기).
+        // ⚠️ 여기에 alignPhotoCard() 를 쓰지 말 것 — 그건 '카드 윗변을 화면 맨 위에 붙여
+        //    사진 한 장을 꽉 채우는' 사진칸 전용 동작이다. 제목칸은 보이기만 하면 된다.
+        const el = document.activeElement;
+        if (el && el.classList.contains('form-input') && writeContentEl && writeContentEl.contains(el)) {
+          requestAnimationFrame(() => el.scrollIntoView({ block: 'center' }));
+        }
       });
     }
 
