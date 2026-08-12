@@ -3339,8 +3339,25 @@
 
     // 편집화면 사진 높이의 기준값(--avail) — 키보드가 올라와도 실제로 보이는 높이.
     // 100vh·100dvh 는 아이폰에서 키보드가 올라와도 줄지 않는다. visualViewport 만 줄어든다.
+    // 🚨 키보드가 올라온 뒤의 화면 높이를 기억해 둔다.
+    //    후기칸을 누르면 이 순서로 화면이 세 번 움직였다 —
+    //      ① 키보드가 아직 없어 화면이 크니 사진을 크게 맞춤(사진이 커졌다가)
+    //      ② 키보드가 올라오며 화면이 급감해 레이아웃이 다시 움직이고
+    //      ③ 브라우저가 커서를 화면 한가운데로 옮겨 다음 사진이 비쳤다.
+    //    나중에 고치지 말고 처음부터 맞게 그린다 — 눌리는 순간 미리 이 높이로 줄여두면
+    //    키보드가 다 올라와도 레이아웃이 더 움직일 게 없다(아래 focusin 참고).
+    //    localStorage 에 두는 건 앱을 새로 열자마자 누르는 첫 후기칸까지 덮기 위해서다.
+    const KB_KEY = 'rabong_kb_h';
+    let kbHeight = parseFloat(localStorage.getItem(KB_KEY)) || 0;
+    let visMax = 0;
     function syncAvail() {
       const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      if (h > visMax) visMax = h;
+      // 후기칸에 포커스가 있는데 화면이 눈에 띄게 줄었다 = 키보드가 올라온 높이다
+      if (visMax && h < visMax - 80 && focusedPhotoInput()) {
+        kbHeight = h;
+        try { localStorage.setItem(KB_KEY, h); } catch (e) { /* 사파리 시크릿 등 */ }
+      }
       document.documentElement.style.setProperty('--avail', h + 'px');
     }
     if (window.visualViewport) window.visualViewport.addEventListener('resize', syncAvail);
@@ -3381,7 +3398,11 @@
     // ⚠️ .mic-wrap 은 마이크를 걷어낸 지금도 후기칸 래퍼로 살아 있다. 여기서 높이를 재는
     //    대상이라 지우면 사진 크기 계산이 통째로 깨진다.
     function fitPhotoToScreen(card) {
-      const vis = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      // ⚠️ visualViewport 를 직접 읽지 말 것. 카드 높이가 calc(var(--avail) − 18px) 이므로
+      //    사진도 같은 --avail 을 봐야 한다. 아래 focusin 이 키보드가 오기 전에 --avail 을
+      //    미리 줄여두는데, 여기서 실측값을 읽으면 그 순간만 사진이 크게 그려졌다가 줄어든다.
+      const vis = parseFloat(getComputedStyle(document.documentElement)
+                    .getPropertyValue('--avail')) || window.innerHeight;
       const mic = card.querySelector('.mic-wrap');
       const media = card.querySelector('.photo-form-group-image img, .photo-form-group-image video');
       if (!mic || !media) return;
@@ -3496,6 +3517,16 @@
       if (!e.target.classList.contains('form-input')) return;
       ignoreWriteScroll = true;
       writePageEl.classList.add('writing');   // 상단바를 접는다 (제목칸은 여기 안 걸린다)
+      // 🚨 키보드가 올라오기 전에 미리 그 자리를 비운다 — 나중에 고치지 말고 처음부터 맞게 그린다.
+      //    이러면 키보드가 다 올라와도 레이아웃이 더 움직일 게 없고, 브라우저가 볼 때도
+      //    후기칸이 이미 화면 안이라 커서를 한가운데로 옮기지 않는다(그게 다음 사진을 비추던 원인).
+      //    대가는 키보드가 올라올 때까지 잠깐 아래에 어두운 띠가 보이는 것 — 키보드 자리다.
+      // ⚠️ 키보드가 이미 올라와 있으면(사진2·3에서 넘어올 때) 조건에 안 걸려 아무 일도 안 한다.
+      //    +80 은 '키보드가 정말 없는 상태'만 걸러내는 여유값이다.
+      const curVis = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      if (kbHeight && curVis > kbHeight + 80) {
+        document.documentElement.style.setProperty('--avail', kbHeight + 'px');
+      }
       alignPhotoCard(e.target);
       // 키보드가 올라오면 화면 높이가 줄고 사진도 줄어든다 — 다 올라온 뒤 한 번 더 맞춘다
       realignWhenSettled();
@@ -3504,6 +3535,9 @@
     document.getElementById('photoFormsContainer').addEventListener('focusout', (e) => {
       if (!e.target.classList.contains('form-input')) return;
       writePageEl.classList.remove('writing');
+      // 🚨 미리 줄여둔 --avail 을 실측값으로 되돌린다. 키보드가 끝내 안 올라오는 경우
+      //    (하드웨어 키보드·PC)에 편집화면이 줄어든 채로 굳는 것을 막는 안전판이다.
+      syncAvail();
       const media = e.target.closest('.form-section')
         .querySelector('.photo-form-group-image img, .photo-form-group-image video');
       if (media) media.style.maxHeight = '';
