@@ -1156,6 +1156,11 @@
     .write-trip.writing .write-header {
       display: none;
     }
+    /* 헤더가 사라지면 .write-content 가 화면 맨 위로 올라온다. 그때 노치를 대신 피해야 한다 —
+       안 그러면 글 쓰는 동안 사진줄이 아이폰 상태바에 겹친다(실기기 확인) */
+    .write-trip.writing .write-content {
+      padding-top: calc(6px + var(--safe-top));
+    }
 
     /* + / 자동저장 버튼 */
     .write-header-actions {
