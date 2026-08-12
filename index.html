@@ -1156,11 +1156,13 @@
     .write-trip.writing .write-header {
       display: none;
     }
-    /* 헤더가 사라지면 .write-content 가 화면 맨 위로 올라온다. 그때 노치를 대신 피해야 한다 —
-       안 그러면 글 쓰는 동안 사진줄이 아이폰 상태바에 겹친다(실기기 확인) */
-    .write-trip.writing .write-content {
-      padding-top: calc(6px + var(--safe-top));
-    }
+    /* 🚨 여기에 .write-content { padding-top } 을 더하지 말 것 — 한 번 넣었다가 되돌렸다.
+       아래 카드 높이(--avail − 18)와 alignPhotoCard() 의 스크롤 계산이 '위 여백 0' 을 전제로
+       짜여 있다. 노치만큼(아이폰 약 65px) 여백을 주면 카드가 화면을 넘치고 스크롤 기준도
+       어긋나서, 후기칸을 누르면 화면이 통째로 검게 나온다(실기기 확인 — 스크롤하면 도로 나옴).
+       그리고 writing 은 사진 후기칸에만 붙으므로 제목칸 노치에는 효과도 없다 —
+       그쪽은 visualViewport resize 의 scrollIntoView({block:'end'}) 가 맡는다.
+       정 손대야 한다면 카드 높이·fitPhotoToScreen() 까지 세 곳을 함께 맞춰야 한다 */
 
     /* + / 자동저장 버튼 */
     .write-header-actions {
