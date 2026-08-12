@@ -3465,13 +3465,40 @@
       const a = document.activeElement;
       return a && a.classList.contains('form-input') && a.closest('#photoFormsContainer') ? a : null;
     }
+
+    // 🚨 마지막에 맞추는 쪽이 이긴다 — 그 마지막이 우리여야 한다.
+    //    키보드가 올라오면 브라우저가 스스로 '커서를 화면 한가운데'로 스크롤한다(위 alignPhotoCard
+    //    주석 참고). 그게 우리 정렬보다 늦게 일어나면 우리가 맞춰둔 게 통째로 덮인다.
+    //    갤럭시 실기기 계측(?dbg=1) — 사진1에서 카드 403 / 기대 403, focus-within 도 정상인데
+    //    후기칸만 화면 정중앙(421의 약 210)에 놓여 있었다. 즉 크기는 다 맞고 스크롤만 틀어졌다.
+    //    사진2·3이 멀쩡했던 건 그때는 키보드가 이미 올라와 있어 브라우저가 스크롤할 일이 없어서다
+    //    ("사진1에서만 / 키보드 없는 첫 탭에서만" 이 정확히 그 조건이다).
+    //    예전 고정 300ms 로는 키보드 애니메이션이 그보다 길면 진다 → '더 이상 안 움직일 때까지'로 바꾼다.
+    // ⚠️ 손가락이 민 스크롤까지 되맞추면 사용자와 싸운다. 다행히 구별이 된다 —
+    //    손가락으로 밀면 아래 touchmove 가 키보드를 내려서 포커스가 빠진다.
+    //    그러니 '후기칸에 포커스가 남아 있는데 일어난 스크롤' 은 브라우저가 한 것이다.
+    let settleTimer = null;
+    function realignWhenSettled() {
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        const a = focusedPhotoInput();
+        // 위로 밀어 상단바를 되살렸으면(writing 해제) 손대지 않는다 — 탈출구를 막게 된다
+        if (!a || !writePageEl.classList.contains('writing')) return;
+        // ⚠️ 이미 제자리면 건드리지 않는다. 우리 정렬도 scroll 이벤트를 낳으므로, 무조건 맞추면
+        //    브라우저와 서로 되돌리는 핑퐁이 될 수 있다. 'end' 로 맞으면 두 밑변이 거의 붙는다
+        if (Math.abs(writeContentEl.getBoundingClientRect().bottom
+                     - a.getBoundingClientRect().bottom) <= 24) return;
+        alignPhotoCard(a);
+      }, 250);
+    }
+
     document.getElementById('photoFormsContainer').addEventListener('focusin', (e) => {
       if (!e.target.classList.contains('form-input')) return;
       ignoreWriteScroll = true;
       writePageEl.classList.add('writing');   // 상단바를 접는다 (제목칸은 여기 안 걸린다)
       alignPhotoCard(e.target);
-      // 키보드가 올라오면 화면 높이가 줄고 사진도 줄어든다 — 그때 한 번 더 맞춘다
-      setTimeout(() => { const a = focusedPhotoInput(); if (a) alignPhotoCard(a); }, 300);
+      // 키보드가 올라오면 화면 높이가 줄고 사진도 줄어든다 — 다 올라온 뒤 한 번 더 맞춘다
+      realignWhenSettled();
     });
     // 다 쓰고 나오면 상단바와 사진 크기(최대 320px)를 되돌린다
     document.getElementById('photoFormsContainer').addEventListener('focusout', (e) => {
@@ -3491,6 +3518,10 @@
         writeScrollPrev = y;
         if (ignoreWriteScroll) return;
         if (dy < -4 || y <= 4) writePageEl.classList.remove('writing');
+        // 우리가 만들지 않은 스크롤인데 후기칸에 포커스가 남아 있다 = 손가락이 아니라 브라우저다
+        // (손가락이면 아래 touchmove 가 키보드를 내려 포커스가 빠졌을 것). 키보드가 올라오며
+        // 커서를 화면 한가운데로 옮기는 그 스크롤이라, 멈추길 기다렸다가 되맞춘다
+        realignWhenSettled();
       }, { passive: true });
 
       // 🚨 화면을 밀면 키보드를 내린다 — 키보드가 화면 절반을 먹은 채로는 고칠 사진을 찾아
@@ -3519,7 +3550,8 @@
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         const a = focusedPhotoInput();
-        if (a) { requestAnimationFrame(() => alignPhotoCard(a)); return; }
+        // 즉시 한 번(따라오는 느낌) + 다 멈춘 뒤 한 번 더(브라우저의 가운데 정렬을 되덮는다)
+        if (a) { requestAnimationFrame(() => alignPhotoCard(a)); realignWhenSettled(); return; }
         // 🚨 제목칸은 #photoFormsContainer 밖이다(제목 고칠 땐 저장하기를 접지 않으려는 의도 —
         //    위 .write-trip.writing 주석 참고). 그 바람에 키보드 보정까지 같이 빠져 있었다.
         //    키보드가 올라오며 --avail 이 줄면 레이아웃이 당겨져 입력칸이 화면 밖으로 밀렸고,
