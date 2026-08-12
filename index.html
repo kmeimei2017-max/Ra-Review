@@ -3707,9 +3707,13 @@
         //    글자를 한 자 쳐야 브라우저가 커서를 따라 스크롤해서 그제서야 보였다(아이폰 실기기).
         // ⚠️ 여기에 alignPhotoCard() 를 쓰지 말 것 — 그건 '카드 윗변을 화면 맨 위에 붙여
         //    사진 한 장을 꽉 채우는' 사진칸 전용 동작이다. 제목칸은 보이기만 하면 된다.
+        // ⚠️ block 은 'end' 다. 'center' 로 두면 입력칸이 화면 한가운데 놓이면서 위아래로
+        //    공간이 반씩 갈려, 위로는 사진줄이 잘리고 아래로는 다음 사진의 빈자리가 드러난다.
+        //    'end' 는 입력칸을 키보드 바로 위에 붙인다(.write-trip 높이가 --avail 이라 그 아래가
+        //    곧 키보드다) — 그 위가 통째로 열려서 사진줄이 보인다. 문자앱·Gemini 와 같은 배치다.
         const el = document.activeElement;
         if (el && el.classList.contains('form-input') && writeContentEl && writeContentEl.contains(el)) {
-          requestAnimationFrame(() => el.scrollIntoView({ block: 'center' }));
+          requestAnimationFrame(() => el.scrollIntoView({ block: 'end' }));
         }
       });
     }
