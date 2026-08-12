@@ -1494,6 +1494,10 @@
        카드 윗변을 화면 맨 위에 맞추는 건 alignPhotoCard() 가 한다 */
     #photoFormsContainer .form-section:focus-within .photo-form-group {
       height: calc(var(--avail) - 18px);
+      /* 미리 줄이기(focusin)가 --avail 을 한 프레임에 떨어뜨리면 카드가 번쩍 점프했다.
+         0.22s ≈ 키보드가 올라오는 시간 — 점프를 잔잔한 수축으로 바꾼다.
+         끝 위치는 realignWhenSettled() 가 잡는다 */
+      transition: height 0.22s ease;
     }
     /* 남는 높이는 사진칸이 아니라 여기가 흡수한다 — 사진칸을 늘리면 가로사진일 때
        사진 아래 검은 자리가 생기고 번호 배지가 사진이 아니라 그 자리에 붙는다.
@@ -3412,11 +3416,14 @@
     }
 
     function fitPhotoToScreen(card) {
+      // 🚨 키보드 높이를 아는 순간부터 사진 크기의 기준은 kbHeight 하나다.
+      //    '그때그때 화면'을 따라가게 두면 툴바 ← 처럼 포커스가 남은 채 화면만 커질 때
+      //    사진이 도로 커진다(256→536 실측). 쓸 때든 볼 때든 크기는 하나로 고정한다.
       // ⚠️ visualViewport 를 직접 읽지 말 것. 카드 높이가 calc(var(--avail) − 18px) 이므로
-      //    사진도 같은 --avail 을 봐야 한다. 아래 focusin 이 키보드가 오기 전에 --avail 을
-      //    미리 줄여두는데, 여기서 실측값을 읽으면 그 순간만 사진이 크게 그려졌다가 줄어든다.
-      const vis = parseFloat(getComputedStyle(document.documentElement)
-                    .getPropertyValue('--avail')) || window.innerHeight;
+      //    폴백도 같은 --avail 을 봐야 한다(focusin 의 미리 줄이기와 어긋나지 않게).
+      const vis = kbHeight
+        || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--avail'))
+        || window.innerHeight;
       sizePhoto(card, vis);
     }
 
@@ -3558,6 +3565,7 @@
     document.getElementById('photoFormsContainer').addEventListener('focusout', (e) => {
       if (!e.target.classList.contains('form-input')) return;
       writePageEl.classList.remove('writing');
+      kbWasUp = false;   // 다음 포커스의 blur 판정을 이번 키보드 이력으로 오염시키지 않게
       // 🚨 미리 줄여둔 --avail 을 실측값으로 되돌린다. 키보드가 끝내 안 올라오는 경우
       //    (하드웨어 키보드·PC)에 편집화면이 줄어든 채로 굳는 것을 막는 안전판이다.
       syncAvail();
@@ -3608,9 +3616,24 @@
       const a = document.activeElement;
       if (a && a.classList.contains('form-input') && writeContentEl.contains(a)) a.blur();
     }
+    // 이번 포커스에서 키보드가 실제로 올라갔었는지 — 아래 blur 판정의 전제 조건
+    let kbWasUp = false;
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         const a = focusedPhotoInput();
+        const h = window.visualViewport.height;
+        // 🚨 갤럭시 툴바 ← 는 키보드만 내리고 포커스는 남긴다(계측: fw:1 af:1 그대로).
+        //    그 어중간한 상태에서 화면이 커지면 사진이 도로 커졌다(256→536 실측).
+        //    키보드가 없으면 쓰기 모드가 아니다 — blur 해서 '보는 중'으로 보낸다.
+        //    touchmove 탈출구와 같은 길(blur → focusout)이라 상단바 복귀·크기 유지가 공짜다.
+        // ⚠️ '키보드가 실제로 올라갔던' 포커스에서만 판정한다(kbWasUp). 사파리·크롬은 입력칸을
+        //    누르면 주소창이 펼쳐지며 화면이 조금 줄었다 커지는데, 그 폭(~56px)이 문턱(80px)
+        //    안이라 이 조건만으로는 키보드가 뜨기도 전에 blur 되어 입력 자체가 막힌다.
+        if (a && h < visMax - 80) kbWasUp = true;
+        if (a && kbWasUp && h >= visMax - 80) {
+          dismissWriteKeyboard();
+          return;
+        }
         // 즉시 한 번(따라오는 느낌) + 다 멈춘 뒤 한 번 더(브라우저의 가운데 정렬을 되덮는다)
         if (a) { requestAnimationFrame(() => alignPhotoCard(a)); realignWhenSettled(); return; }
         // 🚨 제목칸은 #photoFormsContainer 밖이다(제목 고칠 땐 저장하기를 접지 않으려는 의도 —
