@@ -2636,6 +2636,9 @@
       `;
       }).join('');
       document.getElementById('photoFormsContainer').innerHTML = html;
+      // 그려지자마자 '쓸 때의 크기'로 맞춘다 — 나중에 누를 때 사진이 바뀌지 않게.
+      // rAF 로 미루는 건 후기칸 높이를 재려면 한 번은 그려져 있어야 하기 때문
+      requestAnimationFrame(fitAllPhotos);
     }
 
     // 저장 중 로딩 오버레이 표시/숨김
@@ -3354,9 +3357,10 @@
       const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
       if (h > visMax) visMax = h;
       // 후기칸에 포커스가 있는데 화면이 눈에 띄게 줄었다 = 키보드가 올라온 높이다
-      if (visMax && h < visMax - 80 && focusedPhotoInput()) {
+      if (visMax && h < visMax - 80 && focusedPhotoInput() && Math.abs(kbHeight - h) > 1) {
         kbHeight = h;
         try { localStorage.setItem(KB_KEY, h); } catch (e) { /* 사파리 시크릿 등 */ }
+        fitAllPhotos();   // 값을 처음 알았거나 바뀌었으면 모든 사진을 그 크기로 통일
       }
       document.documentElement.style.setProperty('--avail', h + 'px');
     }
@@ -3397,17 +3401,36 @@
     // 예전에 마이크 버튼 유무로 42px 어긋났을 때 딱 그만큼 다음 사진이 보였다.
     // ⚠️ .mic-wrap 은 마이크를 걷어낸 지금도 후기칸 래퍼로 살아 있다. 여기서 높이를 재는
     //    대상이라 지우면 사진 크기 계산이 통째로 깨진다.
+    // 사진 한 장이 쓸 높이 = 화면 기준값 − 후기칸 − 여백.
+    // 18 = 화면 아래로 남기는 여유, 12 = 카드 padding·border, 10 = 사진과 후기칸 사이
+    function sizePhoto(card, vis) {
+      const mic = card.querySelector('.mic-wrap');
+      const media = card.querySelector('.photo-form-group-image img, .photo-form-group-image video');
+      // 편집화면이 아직 안 그려졌으면 후기칸을 못 잰다 — 0을 빼면 사진이 화면을 넘친다
+      if (!mic || !media || !mic.offsetHeight) return;
+      media.style.maxHeight = Math.max(80, vis - 18 - mic.offsetHeight - 22) + 'px';
+    }
+
     function fitPhotoToScreen(card) {
       // ⚠️ visualViewport 를 직접 읽지 말 것. 카드 높이가 calc(var(--avail) − 18px) 이므로
       //    사진도 같은 --avail 을 봐야 한다. 아래 focusin 이 키보드가 오기 전에 --avail 을
       //    미리 줄여두는데, 여기서 실측값을 읽으면 그 순간만 사진이 크게 그려졌다가 줄어든다.
       const vis = parseFloat(getComputedStyle(document.documentElement)
                     .getPropertyValue('--avail')) || window.innerHeight;
-      const mic = card.querySelector('.mic-wrap');
-      const media = card.querySelector('.photo-form-group-image img, .photo-form-group-image video');
-      if (!mic || !media) return;
-      // 18 = 화면 아래로 남기는 여유, 12 = 카드 padding·border, 10 = 사진과 후기칸 사이
-      media.style.maxHeight = Math.max(80, vis - 18 - mic.offsetHeight - 22) + 'px';
+      sizePhoto(card, vis);
+    }
+
+    // 🚨 쓸 때와 안 쓸 때의 사진 크기를 같게 만든다.
+    //    예전엔 안 쓸 때 CSS 기본값(max-height:320px), 쓸 때는 화면에 맞춘 값(실측 264px)이라
+    //    후기칸을 누를 때마다 사진이 한 번 바뀌었다. 크기가 바뀌면 화면은 반드시 움직인다.
+    //    처음부터 '쓸 때의 크기'로 그려두면 눌러도 사진이 그대로고, 카드 높이도
+    //    264 + 후기칸 117 + 여백 22 = 403 = (--avail − 18) 로 이미 맞아떨어져 아무것도 안 움직인다.
+    // ⚠️ 키보드 높이를 아직 모르면(첫 실행) 아무것도 하지 않는다 — CSS 기본값 320px 그대로 간다.
+    //    그 한 번을 위해 억지로 추정하면 기기마다 틀린 값이 박힌다.
+    function fitAllPhotos() {
+      if (!kbHeight) return;
+      document.querySelectorAll('#photoFormsContainer .form-section')
+        .forEach((card) => sizePhoto(card, kbHeight));
     }
 
     const writePageEl = document.getElementById('writePage');
@@ -3538,6 +3561,10 @@
       // 🚨 미리 줄여둔 --avail 을 실측값으로 되돌린다. 키보드가 끝내 안 올라오는 경우
       //    (하드웨어 키보드·PC)에 편집화면이 줄어든 채로 굳는 것을 막는 안전판이다.
       syncAvail();
+      // ⚠️ 예전엔 여기서 사진 크기를 CSS 기본값(320px)으로 되돌렸다. 그게 바로
+      //    '누를 때마다 사진이 바뀌는' 원인이었다. 이제는 쓸 때의 크기를 그대로 둔다.
+      //    키보드 높이를 아직 모르는 첫 실행에서만 예전처럼 되돌린다.
+      if (kbHeight) { fitAllPhotos(); return; }
       const media = e.target.closest('.form-section')
         .querySelector('.photo-form-group-image img, .photo-form-group-image video');
       if (media) media.style.maxHeight = '';
