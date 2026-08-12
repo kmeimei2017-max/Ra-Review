@@ -59,6 +59,15 @@
       --font-size: 22px;
       /* 키보드가 올라와도 실제로 보이는 화면 높이. syncAvail() 이 갱신한다 */
       --avail: 100vh;
+
+      /* 노치·홈 인디케이터가 먹는 영역. viewport-fit=cover + status-bar-style=black-translucent 라
+         화면이 노치 밑까지 확장된다(사진을 끝까지 채우려면 이게 맞다). 그래서 UI 요소만
+         이 값만큼 비켜서야 한다. 노치 없는 기기·안드로이드·PC 에서는 전부 0px 이라 그대로다.
+         ⚠️ .app 이나 body 에 통째로 걸지 말 것 — 전체화면 사진까지 밀려 위에 검은 띠가 생긴다 */
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
     }
 
     .app {
@@ -93,7 +102,8 @@
       display: flex;
       flex-direction: column;
       gap: 20px;
-      padding: 20px;
+      /* 위쪽만 안전영역을 더한다 — 안 더하면 첫 카드 윗부분이 아이폰 노치에 들어간다 */
+      padding: calc(20px + var(--safe-top)) 20px 20px;
       max-width: 100%;
       margin: 0 auto;
     }
@@ -951,10 +961,12 @@
       -webkit-overflow-scrolling: touch;
     }
 
+    /* 미리보기·후기페이지 둘 다 위에 헤더가 없다. 번호가 화면 맨 위에 뜨므로
+       세로에서는 노치, 가로에서는 왼쪽 노치를 피해야 한다(가로 사진 후기는 돌려서 본다) */
     .slide-number {
       position: absolute;
-      top: 20px;
-      left: 16px;
+      top: max(20px, var(--safe-top));
+      left: max(16px, var(--safe-left));
       z-index: 11;
       font-size: 16px;
       font-weight: 600;
@@ -963,11 +975,6 @@
       padding: 4px 12px;
       border-radius: 16px;
       white-space: nowrap;
-    }
-
-    /* 친구 보기 모드: 헤더가 없으니 번호를 맨 위로 */
-    .view-mode .slide-number {
-      top: max(16px, env(safe-area-inset-top));
     }
 
     /* 친구 보기 모드: 홈 화면 깜빡임 방지 (링크 진입 시 홈 숨김) */
@@ -1135,7 +1142,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      /* 위쪽만 안전영역을 더한다 — 안 더하면 아이폰 노치가 +·저장하기 버튼을 덮는다 */
+      padding: calc(16px + var(--safe-top)) 16px 16px;
       border-bottom: 1px solid var(--border-dark);
     }
 
