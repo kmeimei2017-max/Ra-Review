@@ -3363,15 +3363,30 @@
     const KB_KEY = 'rabong_kb_h';
     let kbHeight = parseFloat(localStorage.getItem(KB_KEY)) || 0;
     let visMax = 0;
+    let kbLearnTimer = null;
     function syncAvail() {
       const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
       if (h > visMax) visMax = h;
-      // 후기칸에 포커스가 있는데 화면이 눈에 띄게 줄었다 = 키보드가 올라온 높이다
-      if (visMax && h < visMax - 80 && focusedPhotoInput() && Math.abs(kbHeight - h) > 1) {
-        kbHeight = h;
-        try { localStorage.setItem(KB_KEY, h); } catch (e) { /* 사파리 시크릿 등 */ }
-        setPhotoHeightVar();   // 값을 처음 알았거나 바뀌었으면 사진 크기를 다시 정한다
-      }
+      // 🚨 키보드 높이는 '다 멈춘 뒤'에만 배운다. 여기서 곧바로 h 를 받으면 안 된다 —
+      //    키보드가 올라오는 동안 화면 높이는 693 → … → 413 으로 수십 번 지나가는데,
+      //    그 중간값을 최종값으로 착각해서 배우면 사진 크기가 매 프레임 다시 계산된다.
+      //    실기기 녹화(갤럭시 60fps)에서 중간에 223 쯤이 스치는 순간
+      //      사진 높이 = 223 − 18 − 후기칸 117 − 22 = 66px
+      //    로 사진이 토막 나고 카드가 무너져 화면이 100ms 남짓 통째로 검게 나왔다.
+      //    그게 "잠깐 번쩍"의 정체다. 아이폰이 더 심했던 건 아래 주소창이 알약으로 접히며
+      //    중간값이 한 세트 더 지나가기 때문이다.
+      // ⚠️ 이 debounce 를 없애거나 0에 가깝게 줄이지 말 것 — 곧바로 그 증상이 돌아온다.
+      clearTimeout(kbLearnTimer);
+      kbLearnTimer = setTimeout(() => {
+        const now = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+        if (!focusedPhotoInput()) return;                    // 후기칸을 쓰는 중일 때만
+        if (!visMax || now >= visMax - 80) return;            // 키보드가 올라와 있어야
+        if (now < visMax * 0.3) return;                       // 말도 안 되게 작은 값은 버린다
+        if (Math.abs(kbHeight - now) <= 1) return;            // 이미 아는 값이면 그만
+        kbHeight = now;
+        try { localStorage.setItem(KB_KEY, now); } catch (e) { /* 사파리 시크릿 등 */ }
+        setPhotoHeightVar();
+      }, 300);
       document.documentElement.style.setProperty('--avail', h + 'px');
     }
     if (window.visualViewport) window.visualViewport.addEventListener('resize', syncAvail);
