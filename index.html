@@ -487,7 +487,7 @@
 
     /* 입력칸 래퍼 (제목칸·사진 후기칸 공용)
        🚨 이름은 '마이크'지만 마이크는 걷어냈다(2026-08-13). 지우지 말 것 —
-          fitPhotoToScreen() 이 이 요소의 높이를 실측해 사진 크기를 정한다.
+          setPhotoHeightVar() 가 이 요소의 높이를 실측해 사진 크기를 정한다.
           없애려면 그 함수와 renderPhotoForms() 까지 같이 고쳐야 한다.
        resize: none — 사용자가 손잡이로 늘이면 사진 높이 계산이 어긋난다 */
     .mic-wrap { position: relative; }
@@ -1073,7 +1073,7 @@
        어긋나서, 후기칸을 누르면 화면이 통째로 검게 나온다(실기기 확인 — 스크롤하면 도로 나옴).
        그리고 writing 은 사진 후기칸에만 붙으므로 제목칸 노치에는 효과도 없다 —
        그쪽은 visualViewport resize 의 scrollIntoView({block:'end'}) 가 맡는다.
-       정 손대야 한다면 카드 높이·fitPhotoToScreen() 까지 세 곳을 함께 맞춰야 한다 */
+       정 손대야 한다면 카드 높이·setPhotoHeightVar() 까지 세 곳을 함께 맞춰야 한다 */
 
     /* + / 자동저장 버튼 */
     .write-header-actions {
@@ -1472,13 +1472,18 @@
       flex-shrink: 0;
     }
 
-    /* 평소(안 쓰고 있을 때) 사진 크기 — 목록을 훑기 좋은 정도 */
+    /* 🚨 편집화면 사진은 크기가 '하나'다. 쓸 때든 볼 때든, 새로 추가한 직후든 같다.
+       --pf-photo-h 는 키보드가 올라온 화면 기준으로 잰 값(setPhotoHeightVar()).
+       ⚠️ JS 로 요소마다 style.maxHeight 를 박지 말 것 — innerHTML 로 다시 그릴 때마다
+          한 프레임은 기본값(320px)으로 그려졌다가 줄어들어서, 사진을 추가할 때마다
+          '다른 크기가 잠깐' 보였다. CSS 변수로 두면 첫 페인트부터 맞는 크기로 그려진다.
+       320px 는 키보드 높이를 아직 모르는 첫 실행용 폴백이다 */
     .photo-form-group-image img,
     .photo-form-group-image video {
       width: auto;
       height: auto;
       max-width: 100%;
-      max-height: 320px;
+      max-height: var(--pf-photo-h, 320px);
       object-fit: contain;
       display: block;
     }
@@ -1502,7 +1507,7 @@
     }
     /* 남는 높이는 사진칸이 아니라 여기가 흡수한다 — 사진칸을 늘리면 가로사진일 때
        사진 아래 검은 자리가 생기고 번호 배지가 사진이 아니라 그 자리에 붙는다.
-       사진이 실제로 쓸 높이는 fitPhotoToScreen() 이 재서 넣는다 */
+       사진이 실제로 쓸 높이는 setPhotoHeightVar() 가 재서 넣는다(--pf-photo-h) */
     .write-trip.writing #photoFormsContainer .form-section:focus-within .photo-form-group-header {
       flex: 1;
       min-height: 0;
@@ -2643,7 +2648,7 @@
       document.getElementById('photoFormsContainer').innerHTML = html;
       // 그려지자마자 '쓸 때의 크기'로 맞춘다 — 나중에 누를 때 사진이 바뀌지 않게.
       // rAF 로 미루는 건 후기칸 높이를 재려면 한 번은 그려져 있어야 하기 때문
-      requestAnimationFrame(fitAllPhotos);
+      requestAnimationFrame(setPhotoHeightVar);
     }
 
     // 저장 중 로딩 오버레이 표시/숨김
@@ -3348,7 +3353,7 @@
     // 편집화면 사진 높이의 기준값(--avail) — 키보드가 올라와도 실제로 보이는 높이.
     // 100vh·100dvh 는 아이폰에서 키보드가 올라와도 줄지 않는다. visualViewport 만 줄어든다.
     // 🚨 키보드가 올라온 뒤의 화면 높이(kbHeight)를 기억해 둔다. 쓰이는 곳 둘 —
-    //      · 사진 크기 통일(fitAllPhotos): 쓸 때든 볼 때든 사진 크기를 이 값 기준 하나로.
+    //      · 사진 크기 통일(setPhotoHeightVar): 쓸 때든 볼 때든 사진 크기를 이 값 기준 하나로.
     //        누를 때마다 사진이 320↔264 로 바뀌며 화면이 움직이던 것을 없앤다
     //      · 키보드 내려감 판정(visMax 와 함께): 툴바 ← 처럼 포커스만 남는 상태 감지
     //    localStorage 에 두는 건 앱을 새로 열자마자 누르는 첫 후기칸까지 덮기 위해서다.
@@ -3362,7 +3367,7 @@
       if (visMax && h < visMax - 80 && focusedPhotoInput() && Math.abs(kbHeight - h) > 1) {
         kbHeight = h;
         try { localStorage.setItem(KB_KEY, h); } catch (e) { /* 사파리 시크릿 등 */ }
-        fitAllPhotos();   // 값을 처음 알았거나 바뀌었으면 모든 사진을 그 크기로 통일
+        setPhotoHeightVar();   // 값을 처음 알았거나 바뀌었으면 사진 크기를 다시 정한다
       }
       document.documentElement.style.setProperty('--avail', h + 'px');
     }
@@ -3403,39 +3408,19 @@
     // 예전에 마이크 버튼 유무로 42px 어긋났을 때 딱 그만큼 다음 사진이 보였다.
     // ⚠️ .mic-wrap 은 마이크를 걷어낸 지금도 후기칸 래퍼로 살아 있다. 여기서 높이를 재는
     //    대상이라 지우면 사진 크기 계산이 통째로 깨진다.
-    // 사진 한 장이 쓸 높이 = 화면 기준값 − 후기칸 − 여백.
-    // 18 = 화면 아래로 남기는 여유, 12 = 카드 padding·border, 10 = 사진과 후기칸 사이
-    function sizePhoto(card, vis) {
-      const mic = card.querySelector('.mic-wrap');
-      const media = card.querySelector('.photo-form-group-image img, .photo-form-group-image video');
+    // 🚨 편집화면 사진 크기는 '하나'다 — 이 함수가 그 하나를 정한다(CSS 변수 --pf-photo-h).
+    //    쓸 때 264 / 안 쓸 때 320 처럼 둘이면 누를 때마다 화면이 반드시 한 번 움직인다.
+    //    기준은 kbHeight(키보드가 올라온 화면) 하나다. '그때그때 화면'을 따라가게 두면
+    //    툴바 ← 처럼 포커스가 남은 채 화면만 커질 때 사진이 도로 커진다(256→536 실측).
+    // ⚠️ 요소마다 style.maxHeight 를 박는 방식으로 되돌리지 말 것 — 위 CSS 주석 참고.
+    // 18 = 화면 아래로 남기는 여유, 22 = 카드 padding·border + 사진과 후기칸 사이
+    function setPhotoHeightVar() {
+      if (!kbHeight) return;   // 첫 실행 — CSS 폴백 320px 그대로 간다
+      const mic = document.querySelector('#photoFormsContainer .mic-wrap');
       // 편집화면이 아직 안 그려졌으면 후기칸을 못 잰다 — 0을 빼면 사진이 화면을 넘친다
-      if (!mic || !media || !mic.offsetHeight) return;
-      media.style.maxHeight = Math.max(80, vis - 18 - mic.offsetHeight - 22) + 'px';
-    }
-
-    function fitPhotoToScreen(card) {
-      // 🚨 키보드 높이를 아는 순간부터 사진 크기의 기준은 kbHeight 하나다.
-      //    '그때그때 화면'을 따라가게 두면 툴바 ← 처럼 포커스가 남은 채 화면만 커질 때
-      //    사진이 도로 커진다(256→536 실측). 쓸 때든 볼 때든 크기는 하나로 고정한다.
-      // ⚠️ 폴백은 visualViewport 가 아니라 --avail — 카드 높이(calc(var(--avail) − 18px))와
-      //    같은 기준을 봐야 둘이 어긋나지 않는다.
-      const vis = kbHeight
-        || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--avail'))
-        || window.innerHeight;
-      sizePhoto(card, vis);
-    }
-
-    // 🚨 쓸 때와 안 쓸 때의 사진 크기를 같게 만든다.
-    //    예전엔 안 쓸 때 CSS 기본값(max-height:320px), 쓸 때는 화면에 맞춘 값(실측 264px)이라
-    //    후기칸을 누를 때마다 사진이 한 번 바뀌었다. 크기가 바뀌면 화면은 반드시 움직인다.
-    //    처음부터 '쓸 때의 크기'로 그려두면 눌러도 사진이 그대로고, 카드 높이도
-    //    264 + 후기칸 117 + 여백 22 = 403 = (--avail − 18) 로 이미 맞아떨어져 아무것도 안 움직인다.
-    // ⚠️ 키보드 높이를 아직 모르면(첫 실행) 아무것도 하지 않는다 — CSS 기본값 320px 그대로 간다.
-    //    그 한 번을 위해 억지로 추정하면 기기마다 틀린 값이 박힌다.
-    function fitAllPhotos() {
-      if (!kbHeight) return;
-      document.querySelectorAll('#photoFormsContainer .form-section')
-        .forEach((card) => sizePhoto(card, kbHeight));
+      if (!mic || !mic.offsetHeight) return;
+      const h = Math.max(80, kbHeight - 18 - mic.offsetHeight - 22);
+      document.documentElement.style.setProperty('--pf-photo-h', h + 'px');
     }
 
     const writePageEl = document.getElementById('writePage');
@@ -3474,7 +3459,8 @@
         'avail ' + availCss + ' vv ' + r(vv && vv.height) + ' inner ' + r(window.innerHeight),
         'card  ' + r(grp && grp.offsetHeight) + '  (기대 ' + (parseFloat(availCss) - 18).toFixed(0) + ')',
         'cap   ' + r(mic && mic.offsetHeight) + '  img ' + r(media && media.offsetHeight)
-          + '/' + ((media && media.style.maxHeight) || '-'),
+          + '/' + (getComputedStyle(document.documentElement)
+                     .getPropertyValue('--pf-photo-h').trim() || '기본320'),
         'scrl  ' + r(writeContentEl.scrollTop) + ' / ' + r(writeContentEl.scrollHeight)
           + ' cli ' + r(writeContentEl.clientHeight),
         'flag  w:' + (writePageEl.classList.contains('writing') ? 1 : 0)
@@ -3487,7 +3473,7 @@
     function alignPhotoCard(input) {
       const card = input.closest('.form-section');
       if (!card || !writeContentEl) return;
-      fitPhotoToScreen(card);
+      setPhotoHeightVar();   // 값이 이미 맞으면 아무 일도 안 한다 — 크기는 kbHeight 하나로 고정
       ignoreWriteScroll = true;
       // 🚨 예전엔 카드 '윗변'을 스크롤 영역 맨 위에 맞췄다(scrollTop 직접 계산). 그 방식은
       //    "카드 높이 == 화면 높이"를 전제로 하는데, 키보드가 올라오며 --avail 이 급감하면
@@ -3568,13 +3554,8 @@
       writePageEl.classList.remove('writing');
       kbWasUp = false;   // 다음 포커스의 blur 판정을 이번 키보드 이력으로 오염시키지 않게
       syncAvail();       // --avail 을 지금 화면 높이로 맞춰둔다
-      // ⚠️ 예전엔 여기서 사진 크기를 CSS 기본값(320px)으로 되돌렸다. 그게 바로
-      //    '누를 때마다 사진이 바뀌는' 원인이었다. 이제는 쓸 때의 크기를 그대로 둔다.
-      //    키보드 높이를 아직 모르는 첫 실행에서만 예전처럼 되돌린다.
-      if (kbHeight) { fitAllPhotos(); return; }
-      const media = e.target.closest('.form-section')
-        .querySelector('.photo-form-group-image img, .photo-form-group-image video');
-      if (media) media.style.maxHeight = '';
+      // ⚠️ 여기서 사진 크기를 되돌리지 말 것. 예전엔 CSS 기본값(320px)으로 돌려놨는데
+      //    그게 '누를 때마다 사진이 바뀌는' 직접 원인이었다. 크기는 --pf-photo-h 하나로 둔다.
     });
     // 🚨 접힌 상단바의 탈출구 — 위로 밀면 저장하기가 다시 나온다.
     // 한 번 나오면 다음에 후기칸을 새로 누를 때까지 그대로 둔다. 아래로 밀 때마다 도로 접으면
