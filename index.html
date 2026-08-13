@@ -3556,12 +3556,20 @@
       realignWhenSettled();
     }
 
-    // 이제는 크기를 따라 변하는 게 하나도 없다(사진·카드 모두 kbHeight 기준 고정) —
-    // 남은 일은 스크롤로 따라가는 것뿐이라 제목칸과 동작이 같다. 그래서 누르는 즉시 처리해도 된다.
-    // 상단바 접기는 한 번뿐인 변화라 키보드보다 먼저 끝내는 편이 오히려 깔끔하다.
+    // 🚨 누르는 순간에는 아무것도 하지 않는다 — 상단바 접기·정렬을 여기서 하면 키보드가
+    //    오기 전에 화면이 한 번 먼저 움직인다. 아이폰 30fps 녹화에서 누른 시점과 키보드가
+    //    뜨는 시점 사이 딱 한 프레임(100ms)이 그렇게 검게 지나갔다.
+    //    키보드가 올라오는 순간으로 미루면 그 변화가 키보드 애니메이션에 묻힌다 —
+    //    제목칸이 자연스러운 이유가 정확히 이 타이밍이다.
+    // ⚠️ 예전에 한 번 미뤘다가 효과가 없어 되돌린 적이 있다. 그때는 사진이 토막 나는
+    //    문제(kbHeight 를 애니메이션 중간값으로 배우던 것)가 더 커서 가려졌던 것이고,
+    //    그게 잡힌 뒤에야 이 타이밍이 의미를 갖는다. 다시 즉시 처리로 되돌리지 말 것.
     document.getElementById('photoFormsContainer').addEventListener('focusin', (e) => {
       if (!e.target.classList.contains('form-input')) return;
-      enterWriting(e.target);
+      const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      // 키보드가 이미 올라와 있으면(후기칸 사이 이동) 화면 크기가 안 변하니 즉시 처리해도 안 튄다.
+      // visualViewport 가 없는 옛 브라우저는 이어받을 resize 핸들러가 없으니 역시 즉시.
+      if (!window.visualViewport || (visMax && h < visMax - 80)) enterWriting(e.target);
     });
     // 다 쓰고 나오면 상단바를 되돌린다 (사진 크기는 통일값 그대로 둔다 — 아래 참고)
     document.getElementById('photoFormsContainer').addEventListener('focusout', (e) => {
@@ -3632,9 +3640,14 @@
           // 키보드가 오르내리는 '동안' 매 단계 따라간다 — 제목칸(아래)과 똑같이 스크롤만 한다.
           // 아이폰 사파리는 아래 주소창이 알약으로 접히며 키보드와 별개로 한 번 더 바뀌는데,
           // 크기를 따라 변하는 게 없으니 그것도 그냥 따라가면 된다.
-          if (h < visMax - 80) kbWasUp = true;
-          requestAnimationFrame(() => alignPhotoCard(a));
-          realignWhenSettled();
+          // 상단바 접기(enterWriting)도 여기서 처음 일어난다 — 키보드 애니메이션에 묻히라고 미뤄뒀다
+          if (h < visMax - 80) {
+            kbWasUp = true;
+            requestAnimationFrame(() => enterWriting(a));
+          } else {
+            requestAnimationFrame(() => alignPhotoCard(a));
+            realignWhenSettled();
+          }
           return;
         }
         // 🚨 제목칸은 #photoFormsContainer 밖이다(제목 고칠 땐 저장하기를 접지 않으려는 의도 —
