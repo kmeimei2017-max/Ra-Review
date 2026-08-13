@@ -3446,51 +3446,6 @@
     let writeScrollPrev = 0;
     let ignoreWriteScroll = false;   // 아래 alignPhotoCard() 의 스크롤을 '사용자가 밀었다'로 읽지 않게
 
-    // ===== 임시 계측기 — 주소에 ?dbg=1 이 있을 때만 =====
-    // 🚨 다 쓰면 통째로 지울 것. 고치는 코드가 아니라 버리는 코드다.
-    // 갤럭시에서 "사진1 후기칸을 누르면 사진2가 딸려 온다"를 쫓는 중인데,
-    // 실기기가 없어 재현이 안 되고 스크린샷만으로는 앞뒤가 안 맞았다
-    // (카드가 --avail−18 이 아닌 내용물 높이인데 포커스는 분명히 가 있었다).
-    // 그래서 짚이는 대로 고치지 않고 실기기에서 숫자를 직접 읽는다.
-    const DBG = /[?&]dbg=1/.test(location.search);
-    let dbgBox = null, dbgRun = 0;
-    // bump=true 는 alignPhotoCard() 가 돈 횟수만 센다. 아래 주기 갱신은 세지 않는다 —
-    // 마지막 정렬 뒤에 크롬이 스스로 스크롤해 덮어쓰는지 보려면 '지금 값'이 계속 보여야 한다
-    function dbgDump(card, input, bump) {
-      if (!DBG || !card) return;
-      if (!dbgBox) {
-        dbgBox = document.createElement('pre');
-        dbgBox.style.cssText = 'position:fixed;left:0;top:0;z-index:9999;margin:0;'
-          + 'padding:4px 6px;background:rgba(0,0,0,.82);color:#0f0;font-size:11px;'
-          + 'line-height:1.35;white-space:pre;pointer-events:none;';
-        document.body.appendChild(dbgBox);
-      }
-      const r = (v) => Math.round(v || 0);
-      const grp = card.querySelector('.photo-form-group');
-      const mic = card.querySelector('.mic-wrap');
-      const media = card.querySelector('.photo-form-group-image img, .photo-form-group-image video');
-      const availCss = getComputedStyle(document.documentElement).getPropertyValue('--avail').trim();
-      const vv = window.visualViewport;
-      if (bump) dbgRun++;
-      dbgBox.textContent = [
-        'run   ' + dbgRun + '  idx ' + [...card.parentNode.children].indexOf(card),
-        'avail ' + availCss + ' vv ' + r(vv && vv.height) + ' inner ' + r(window.innerHeight),
-        // gap = 입력칸 밑변과 스크롤 영역 밑변의 거리. 0에 가까워야 정렬이 맞은 것이고,
-        // 이 값이 크면 그만큼 아래가 비어 다음 사진이 비친다 — 지금 가장 중요한 숫자다
-        'card  ' + r(grp && grp.offsetHeight) + '  gap '
-          + r(writeContentEl.getBoundingClientRect().bottom - input.getBoundingClientRect().bottom),
-        'cap   ' + r(mic && mic.offsetHeight) + '  img ' + r(media && media.offsetHeight)
-          + '/' + (getComputedStyle(document.documentElement)
-                     .getPropertyValue('--pf-photo-h').trim() || '기본320'),
-        'scrl  ' + r(writeContentEl.scrollTop) + ' / ' + r(writeContentEl.scrollHeight)
-          + ' cli ' + r(writeContentEl.clientHeight),
-        'flag  w:' + (writePageEl.classList.contains('writing') ? 1 : 0)
-          + ' fw:' + (card.matches('#photoFormsContainer .form-section:focus-within') ? 1 : 0)
-          + ' af:' + (document.activeElement === input ? 1 : 0)
-          + ' sa:' + (isStandaloneApp() ? 1 : 0)
-      ].join('\n');
-    }
-
     function alignPhotoCard(input) {
       const card = input.closest('.form-section');
       if (!card || !writeContentEl) return;
@@ -3508,15 +3463,8 @@
       requestAnimationFrame(() => {
         writeScrollPrev = writeContentEl.scrollTop;
         ignoreWriteScroll = false;
-        dbgDump(card, input, true);   // 임시 계측기 (?dbg=1) — 나중에 지울 것
       });
     }
-    // 계측기 주기 갱신 — 정렬이 끝난 뒤 브라우저가 스스로 스크롤해 덮어쓰는지 보려면
-    // 캡처하는 순간의 값이 떠 있어야 한다 (?dbg=1 일 때만 돈다)
-    if (DBG) setInterval(() => {
-      const a = focusedPhotoInput();
-      if (a) dbgDump(a.closest('.form-section'), a, false);
-    }, 300);
     function focusedPhotoInput() {
       const a = document.activeElement;
       return a && a.classList.contains('form-input') && a.closest('#photoFormsContainer') ? a : null;
