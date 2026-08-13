@@ -1497,21 +1497,24 @@
        ⚠️ 숨기기(visibility·opacity)도 금물 — 다음 후기칸을 한 번에 못 누른다.
        18px = 아래로 남기는 여유. 카드(--avail − 18) + 카드 사이 24 > 화면 이라 다음 사진은 못 들어온다.
        카드 윗변을 화면 맨 위에 맞추는 건 alignPhotoCard() 가 한다 */
-    /* ⚠️ .writing 이 같이 걸려야 한다(:focus-within 만으로 걸면 안 된다).
-       writing 은 키보드가 실제로 올라온 순간에만 붙는다 — 누르자마자 이 규칙이 걸리면
-       키보드가 오기 전의 큰 화면(--avail 693) 기준으로 카드가 확 늘어났다 도로 줄어든다.
-       키보드가 올라온 뒤엔 통일된 사진 크기 덕에 카드 내용물이 정확히 이 높이라 변화가 없다 */
-    .write-trip.writing #photoFormsContainer .form-section:focus-within .photo-form-group {
-      height: calc(var(--avail) - 18px);
-      transition: height 0.22s ease;   /* 혹시 남는 높이 변화도 잔잔하게 */
-    }
-    /* 남는 높이는 사진칸이 아니라 여기가 흡수한다 — 사진칸을 늘리면 가로사진일 때
-       사진 아래 검은 자리가 생기고 번호 배지가 사진이 아니라 그 자리에 붙는다.
-       사진이 실제로 쓸 높이는 setPhotoHeightVar() 가 재서 넣는다(--pf-photo-h) */
-    .write-trip.writing #photoFormsContainer .form-section:focus-within .photo-form-group-header {
-      flex: 1;
-      min-height: 0;
-    }
+    /* 🚨 여기에 "포커스 중인 카드 높이 = calc(var(--avail) − 18px)" 규칙을 다시 넣지 말 것.
+       2026-08-13 삭제했다. 이유가 둘이다.
+
+       ① 이제 필요 없다. 그 규칙은 alignPhotoCard() 가 '카드 윗변을 화면 맨 위'에 맞추던
+          시절(c4c019a)의 짝이었다. 지금은 '입력칸 밑변을 화면 밑변'에 맞춘다
+          (scrollIntoView block:'end'). 입력칸 밑변이 화면 밑변이면 그 뒤에 오는 것 —
+          카드의 남은 부분도, 다음 카드도 — 은 정의상 화면 밖이다. 패딩이 필요 없다.
+
+       ② 오히려 해롭다. --avail 은 키보드가 올라오는 '동안' 계속 바뀐다. 그때마다 카드가
+          같이 줄어들어 입력칸이 문서 안에서 위로 밀리고, 아래에 틈이 벌어져 다음 사진이
+          비쳤다가 우리가 되맞추기를 반복했다 — "잠깐 사진2가 보이고 제자리를 찾는" 그 느낌.
+          아이폰 사파리가 더 심했던 건 아래 주소창이 알약으로 접히면서 화면 높이가
+          키보드와 별개로 한 번 더 바뀌기 때문이다(실기기 확인).
+
+       움직이지 않으려면 '화면 크기를 따라가는 것'이 하나도 없어야 한다.
+       사진 크기(--pf-photo-h)와 마찬가지로 카드도 kbHeight 기준 고정값 하나로 끝난다 —
+       사진 + 후기칸 + 여백 22 = kbHeight − 18 이 자연 높이라 못 박을 필요 자체가 없다.
+       가로사진처럼 카드가 짧아도 위 ①에 따라 다음 사진은 안 보인다. */
 
     /* "사진 1" 글자줄 대신 사진 안 좌하단에 붙는 번호 */
     .pf-badge {
@@ -3457,7 +3460,10 @@
       dbgBox.textContent = [
         'run   ' + dbgRun + '  idx ' + [...card.parentNode.children].indexOf(card),
         'avail ' + availCss + ' vv ' + r(vv && vv.height) + ' inner ' + r(window.innerHeight),
-        'card  ' + r(grp && grp.offsetHeight) + '  (기대 ' + (parseFloat(availCss) - 18).toFixed(0) + ')',
+        // gap = 입력칸 밑변과 스크롤 영역 밑변의 거리. 0에 가까워야 정렬이 맞은 것이고,
+        // 이 값이 크면 그만큼 아래가 비어 다음 사진이 비친다 — 지금 가장 중요한 숫자다
+        'card  ' + r(grp && grp.offsetHeight) + '  gap '
+          + r(writeContentEl.getBoundingClientRect().bottom - input.getBoundingClientRect().bottom),
         'cap   ' + r(mic && mic.offsetHeight) + '  img ' + r(media && media.offsetHeight)
           + '/' + (getComputedStyle(document.documentElement)
                      .getPropertyValue('--pf-photo-h').trim() || '기본320'),
@@ -3480,8 +3486,8 @@
       //    카드도 같이 작아져서 미리 맞춰둔 스크롤이 컨텐츠 범위를 벗어난다.
       //    아이폰에서 후기칸을 누르면 화면이 통째로 검게 나왔다(스크롤하면 도로 나옴).
       //    기준을 '변하는 것(카드)' 에서 '봐야 하는 것(입력칸)' 으로 옮긴다 — 제목칸도 같은 방식이다.
-      //    ⚠️ 카드 높이 고정(--avail − 18)은 그대로 둘 것. 갤럭시에서 다음 사진이 딸려 오는 걸
-      //       막는 건 그 CSS 규칙이지 여기가 아니다.
+      //    🚨 다음 사진이 안 보이는 것도 이 한 줄이 만든다 — 입력칸 밑변이 화면 밑변이면
+      //       그 뒤는 전부 화면 밖이다. 예전의 카드 높이 CSS 규칙은 그래서 지웠다(위 CSS 주석).
       input.scrollIntoView({ block: 'end' });
       // scroll 이벤트는 rAF 콜백보다 먼저 발생한다 → 여기서 풀면 순서가 맞는다
       requestAnimationFrame(() => {
@@ -3535,18 +3541,12 @@
       realignWhenSettled();
     }
 
-    // 🚨 제목칸과 같은 타이밍 — 누르는 순간에는 아무것도 바꾸지 않는다.
-    //    상단바 접기·화면 줄이기·스크롤을 여기(focusin)서 하면 키보드보다 먼저 화면이
-    //    움직여서 "잠깐 번쩍"이 보였다(실기기 — 미리 줄이기 방식까지 시도했지만 마찬가지).
-    //    전부 키보드가 실제로 올라오는 순간(visualViewport resize)으로 미뤄서 키보드
-    //    애니메이션 뒤에 숨긴다 — 제목칸이 자연스러웠던 이유가 정확히 이것이다.
+    // 이제는 크기를 따라 변하는 게 하나도 없다(사진·카드 모두 kbHeight 기준 고정) —
+    // 남은 일은 스크롤로 따라가는 것뿐이라 제목칸과 동작이 같다. 그래서 누르는 즉시 처리해도 된다.
+    // 상단바 접기는 한 번뿐인 변화라 키보드보다 먼저 끝내는 편이 오히려 깔끔하다.
     document.getElementById('photoFormsContainer').addEventListener('focusin', (e) => {
       if (!e.target.classList.contains('form-input')) return;
-      // 키보드가 이미 올라와 있으면(후기칸 사이 이동) 화면 크기가 안 변하므로 즉시 처리해도 안 번쩍인다
-      const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-      // ⚠️ visualViewport 가 없는 옛 브라우저는 이어받을 resize 핸들러가 아예 없다 → 예전처럼 즉시
-      if (!window.visualViewport || (visMax && h < visMax - 80)) enterWriting(e.target);
-      // 키보드가 아직 없으면 아무것도 안 한다 — 올라오는 순간 resize 핸들러가 이어받는다
+      enterWriting(e.target);
     });
     // 다 쓰고 나오면 상단바를 되돌린다 (사진 크기는 통일값 그대로 둔다 — 아래 참고)
     document.getElementById('photoFormsContainer').addEventListener('focusout', (e) => {
@@ -3614,12 +3614,12 @@
             dismissWriteKeyboard();
             return;
           }
-          // 키보드가 올라왔다 — 이제서야 상단바 접기·정렬을 한다(제목칸과 같은 타이밍).
-          // 브라우저의 가운데 스크롤과의 경합은 enterWriting 안의 realignWhenSettled 가 잡는다
-          if (h < visMax - 80) {
-            kbWasUp = true;
-            requestAnimationFrame(() => enterWriting(a));
-          }
+          // 키보드가 오르내리는 '동안' 매 단계 따라간다 — 제목칸(아래)과 똑같이 스크롤만 한다.
+          // 아이폰 사파리는 아래 주소창이 알약으로 접히며 키보드와 별개로 한 번 더 바뀌는데,
+          // 크기를 따라 변하는 게 없으니 그것도 그냥 따라가면 된다.
+          if (h < visMax - 80) kbWasUp = true;
+          requestAnimationFrame(() => alignPhotoCard(a));
+          realignWhenSettled();
           return;
         }
         // 🚨 제목칸은 #photoFormsContainer 밖이다(제목 고칠 땐 저장하기를 접지 않으려는 의도 —
