@@ -3621,10 +3621,14 @@
     }
     // 이번 포커스에서 키보드가 실제로 올라갔었는지 — 아래 blur 판정의 전제 조건
     let kbWasUp = false;
+    let lastVH = 0;
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         const a = focusedPhotoInput();
         const h = window.visualViewport.height;
+        // 화면이 커지는 중 = 키보드가 내려가는 중 (또는 주소창이 도로 펼쳐지는 중)
+        const growing = h > lastVH + 2;
+        lastVH = h;
         // 🚨 갤럭시 툴바 ← 는 키보드만 내리고 포커스는 남긴다(계측: fw:1 af:1 그대로).
         //    그 어중간한 상태에서 화면이 커지면 사진이 도로 커졌다(256→536 실측).
         //    키보드가 없으면 쓰기 모드가 아니다 — blur 해서 '보는 중'으로 보낸다.
@@ -3637,7 +3641,12 @@
             dismissWriteKeyboard();
             return;
           }
-          // 키보드가 오르내리는 '동안' 매 단계 따라간다 — 제목칸(아래)과 똑같이 스크롤만 한다.
+          // 🚨 키보드가 내려가는 중에는 따라다니지 않는다 — 사용자는 나가는 중이다.
+          //    포커스를 놓는 건 '다 내려간 뒤'라, 그전까지 매 단계 scrollIntoView 를 부르면
+          //    내려가는 1.3초 내내 화면이 같이 스크롤된다(아이폰 사파리 30fps 녹화 확인).
+          //    올라올 때만 따라가면 된다.
+          if (growing) return;
+          // 키보드가 올라오는 '동안' 매 단계 따라간다 — 제목칸(아래)과 똑같이 스크롤만 한다.
           // 아이폰 사파리는 아래 주소창이 알약으로 접히며 키보드와 별개로 한 번 더 바뀌는데,
           // 크기를 따라 변하는 게 없으니 그것도 그냥 따라가면 된다.
           // 상단바 접기(enterWriting)도 여기서 처음 일어난다 — 키보드 애니메이션에 묻히라고 미뤄뒀다
